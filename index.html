@@ -201,9 +201,11 @@ footer .wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
   <h2>Гора ждёт первых лыжников</h2>
   <p>Начни с одного подъёмника и одной трассы — а дальше отели, гондолы и ночные спуски.</p>
   <a class="btn btn-main" href="powder-peak.html">▶ Играть бесплатно</a>
+  <p id="donate" hidden style="margin-top:22px">Нравится игра? <a id="donateA" class="btn btn-ghost" target="_blank" rel="noopener" style="padding:10px 18px;font-size:16px">💛 Поддержать автора</a></p>
 </div></section>
 </main>
 
 <footer><div class="wrap"><span>© Powder Peak · горнолыжный тайкун в браузере</span><span>Сделано на three.js</span></div></footer>
+<script>/* paste your donation link here, same as in powder-peak.html */const DONATE_URL='';if(DONATE_URL){document.getElementById('donate').hidden=false;document.getElementById('donateA').href=DONATE_URL}</script>
 <script>if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{})</script>
 </body></html>
