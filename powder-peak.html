@@ -891,21 +891,34 @@ const ACCENTS=[0xf8fafc,0x111827,0xfacc15,0x22d3ee,0xf472b6,0x84cc16,0xfb923c];
 const SKINS=[0xf1c7a5,0xe0ac69,0xc68642,0x8d5524,0xffdbac];
 skiG.translate(0,.05,0);
 const SK_CAP=320,_q=new THREE.Quaternion(),_up=new THREE.Vector3(0,1,0),_one=new THREE.Vector3(1,1,1),_p=new THREE.Vector3();
-const skJacket=mergeGeos([[bx(.62,.82,.4,0,1.42,0)],[bx(.17,.66,.19,-.42,1.4,.08,-.35)],[bx(.17,.66,.19,.42,1.4,.08,-.35)],[bx(.64,.1,.42,0,1.63,0)]]);
-const skPants=mergeGeos([[bx(.56,.26,.36,0,1.02,0)],[bx(.22,.62,.27,-.15,.66,.04,.12)],[bx(.22,.62,.27,.15,.66,.04,.12)]]);
-const skFace=mergeGeos([[bx(.32,.24,.1,0,1.92,.22)],[bx(.34,.1,.34,0,1.78,0)]]);
-const skAccent=mergeGeos([[bx(.64,.1,.42,0,1.36,0)],[bx(.19,.08,.21,-.42,1.36,.08)],[bx(.19,.08,.21,.42,1.36,.08)],[bx(.66,.12,.44,0,1.79,0)]]);
-const skHelm=(()=>{const g=new THREE.SphereGeometry(.28,10,8);g.scale(1,.92,1.05);g.translate(0,2.08,0);return mergeGeos([[g]])})();
-const skFixed=mergeGeos([[bx(.44,.14,.1,0,2.06,.25),0x0f172a],[bx(.46,.04,.11,0,2.14,.25),0xfacc15],[bx(.06,.03,.03,0,1.88,.285),0x7f1d1d],[bx(.04,.05,.04,0,1.95,.29),0xd4a483],[bx(.24,.22,.34,-.15,.2,.06),0x111827],[bx(.24,.22,.34,.15,.2,.06),0x111827],
-  [bx(.04,1.3,.04,-.56,.95,.32,-.42),0x94a3b8],[bx(.04,1.3,.04,.56,.95,.32,-.42),0x94a3b8],[bx(.16,.16,.16,-.48,1.08,.18),0x111827],[bx(.16,.16,.16,.48,1.08,.18),0x111827]]);
+// rounded original guest model: limbs are tapered cylinders between joints
+function limb(a,b,r1,r2){const A=new THREE.Vector3(...a),B=new THREE.Vector3(...b),d=B.clone().sub(A),L=d.length();const g=new THREE.CylinderGeometry(r2,r1,L,8);g.translate(0,L/2,0);
+  const q=new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0,1,0),d.normalize());g.applyMatrix4(new THREE.Matrix4().makeRotationFromQuaternion(q));g.translate(A.x,A.y,A.z);return g}
+function ball(r,x,y,z,sx,sy,sz){const g=new THREE.SphereGeometry(r,12,9);g.scale(sx||1,sy||1,sz||1);g.translate(x,y,z);return g}
+// torso + arms (jacket colour); arms reach forward to the poles
+const skJacket=mergeGeos([[ball(.31,0,1.42,0,1,1.25,.78)],[ball(.2,-.3,1.62,0)],[ball(.2,.3,1.62,0)],
+  [limb([-.34,1.6,0],[-.44,1.25,.18],.1,.09)],[limb([-.44,1.25,.18],[-.48,1.05,.36],.09,.08)],[limb([.34,1.6,0],[.44,1.25,.18],.1,.09)],[limb([.44,1.25,.18],[.48,1.05,.36],.09,.08)]]);
+const skAccent=mergeGeos([[ball(.315,0,1.36,0,1,.28,.79)],[ball(.13,0,1.82,0,1.2,.5,1.1)]]);// waist band + collar/scarf
+// legs: three stances (ski crouch, walk A, walk B)
+const legs=(lk,rk,la,ra)=>mergeGeos([[ball(.27,0,1.08,0,1,.55,.85)],[limb([-.15,1.05,0],lk,.13,.11)],[limb(lk,la,.11,.09)],[limb([.15,1.05,0],rk,.13,.11)],[limb(rk,ra,.11,.09)]]);
+const skPants=legs([-.16,.62,.16],[.16,.62,.16],[-.16,.22,.02],[.16,.22,.02]);
+const skPantsA=legs([-.15,.62,.22],[.15,.64,-.12],[-.15,.2,.18],[.15,.24,-.26]);
+const skPantsB=legs([-.15,.64,-.12],[.15,.62,.22],[-.15,.24,-.26],[.15,.2,.18]);
+// head: skin face + neck; helmet shell; fixed details
+const skFace=mergeGeos([[ball(.23,0,2.02,.02,1,1.08,1)],[limb([0,1.8,0],[0,1.92,0],.09,.09)]]);
+const skHelm=mergeGeos([[ball(.255,0,2.1,-.01,1.02,.82,1.06)]]);
+const skFixed=mergeGeos([[ball(.2,0,2.06,.17,1.15,.42,.45),0x0f172a],[ball(.21,0,2.13,.15,1.13,.12,.45),0xfacc15],[ball(.035,0,1.98,.25),0xe2a882],[bx(.1,.025,.03,0,1.9,.235),0x7f1d1d],
+  [ball(.07,-.06,2.07,.235,1,.6,.4),0x7dd3fc],[ball(.07,.06,2.07,.235,1,.6,.4),0x7dd3fc],
+  [bx(.2,.2,.34,-.16,.15,.06),0x111827],[bx(.2,.2,.34,.16,.15,.06),0x111827],[ball(.09,-.48,1.03,.38),0x111827],[ball(.09,.48,1.03,.38),0x111827],
+  [limb([-.5,1.04,.4],[-.62,.1,.55],.02,.02),0x94a3b8],[limb([.5,1.04,.4],[.62,.1,.55],.02,.02),0x94a3b8]]);
 const skBoard=mergeGeos([[bx(1.75,.06,.38,0,.05,0)],[bx(.3,.06,.38,.95,.09,0,0,0)],[bx(.3,.06,.38,-.95,.09,0)]]);
 const skSkis=mergeGeos([[bx(.13,.05,1.95,-.15,.04,.12)],[bx(.13,.05,1.95,.15,.04,.12)],[bx(.13,.05,.3,-.15,.1,1.12,-.5)],[bx(.13,.05,.3,.15,.1,1.12,-.5)]]);
 const SKIC=[0xdc2626,0x2563eb,0xfacc15,0x111827,0xf8fafc,0x16a34a,0xf97316];
-const skParts=[[skJacket,0],[skPants,1],[skHelm,2],[skSkis,3,'ski'],[skFixed,-1],[skFace,4],[skAccent,5],[skBoard,3,'board']].map(([g,ci,only])=>{const im=new THREE.InstancedMesh(g,ci<0?vcMat:new THREE.MeshLambertMaterial({color:0xffffff}),SK_CAP);im.frustumCulled=false;im.castShadow=true;im.userData.ci=ci;im.userData.only=only;if(ci>=0){im.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(SK_CAP*3).fill(1),3)}im.count=0;scene.add(im);return im});
+const skParts=[[skJacket,0],[skPants,1,null,'ski'],[skPantsA,1,null,'wA'],[skPantsB,1,null,'wB'],[skHelm,2],[skSkis,3,'ski'],[skFixed,-1],[skFace,4],[skAccent,5],[skBoard,3,'board']].map(([g,ci,only,pose])=>{const im=new THREE.InstancedMesh(g,ci<0?vcMat:new THREE.MeshLambertMaterial({color:0xffffff}),SK_CAP);im.frustumCulled=false;im.castShadow=true;im.userData.ci=ci;im.userData.only=only;im.userData.pose=pose;if(ci>=0){im.instanceColor=new THREE.InstancedBufferAttribute(new Float32Array(SK_CAP*3).fill(1),3)}im.count=0;scene.add(im);return im});
 // each skier is a light anchor object; its body is drawn by 5 shared instanced meshes (5 draw calls for everyone)
 function makeSkierMesh(){const o=new THREE.Object3D();o.scale.setScalar(1.25);o.userData.c=[pick(JACKETS),pick([0x1f2937,0x374151,0x1e3a8a,0x111827,0x7c2d12,0x334155,0x4d7c0f,0xf8fafc]),pick([0xef4444,0x2563eb,0xfacc15,0xf8fafc,0x16a34a,0x111827,0xf97316]),pick(SKIC),pick(SKINS),pick(ACCENTS)];o.userData.board=Math.random()<.3;scene.add(o);return o}
-function syncSkiers(){const cnt=new Map(skParts.map(im=>[im,0]));let near=0;for(const s of skiers){const o=s.mesh;if(!o.visible||o.scale.x<.01)continue;if(ride&&!s.patrol){const d=Math.hypot(o.position.x-ride.p.x,o.position.z-ride.p.z);if(d<70){if(s.run===ride.R||near>=3)continue;near++}}o.updateMatrix();const kind=o.userData.board?'board':'ski';
-  for(const im of skParts){const u=im.userData;if(u.only&&u.only!==kind)continue;const n=cnt.get(im);if(n>=SK_CAP)continue;im.setMatrixAt(n,o.matrix);if(u.ci>=0){_c.setHex(o.userData.c[u.ci]);im.setColorAt(n,_c)}cnt.set(im,n+1)}}
+function syncSkiers(){const cnt=new Map(skParts.map(im=>[im,0]));let near=0;for(const s of skiers){const o=s.mesh;if(!o.visible||o.scale.x<.01)continue;if(ride&&!s.patrol){const d=Math.hypot(o.position.x-ride.p.x,o.position.z-ride.p.z);if(d<70){if(s.run===ride.R||near>=3)continue;near++}}o.updateMatrix();const kind=o.userData.board?'board':'ski';const pz=s.state==='walk'?((performance.now()/220+(s.phase||0)*3)|0)%2?'wA':'wB':'ski';
+  for(const im of skParts){const u=im.userData;if(u.only&&u.only!==kind)continue;if(u.pose&&u.pose!==pz)continue;const n=cnt.get(im);if(n>=SK_CAP)continue;im.setMatrixAt(n,o.matrix);if(u.ci>=0){_c.setHex(o.userData.c[u.ci]);im.setColorAt(n,_c)}cnt.set(im,n+1)}}
   for(const im of skParts){im.count=cnt.get(im);im.instanceMatrix.needsUpdate=true;if(im.instanceColor)im.instanceColor.needsUpdate=true}}
 // thought bubbles
 const THOUGHTS={rescue:['⛑️','Спасатель спешит на помощь'],saved:['🙏','Спасибо, спасатели!'],queue:['⏳','Очередь слишком длинная'],steep:['😱','Трасса слишком сложная для меня'],stuck:['🤷','Застрял: отсюда никуда не уехать'],price:['💸','Ски-пасс дорогой'],hungry:['🍔','Хочу есть, а негде'],happy:['😍','Отличная трасса!'],nolift:['🚫','У базы нет подъёмника'],fall:['🤕','Упал на склоне'],broken:['🛠️','Подъёмник сломался!'],slush:['🫠','Снег раскис, каша'],powder:['🤩','Свежий снег, кайф!']};
