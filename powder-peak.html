@@ -412,7 +412,7 @@ const skyDome=new THREE.Mesh(new THREE.SphereGeometry(1500,32,16),new THREE.Shad
 skyDome.renderOrder=-1;skyDome.frustumCulled=false;scene.add(skyDome);
 // drifting clouds
 const cloudTex=(()=>{const cv=document.createElement('canvas');cv.width=cv.height=128;const g=cv.getContext('2d');for(let k=0;k<7;k++){const x=30+Math.random()*68,y=50+Math.random()*28,r=22+Math.random()*24;const gr=g.createRadialGradient(x,y,0,x,y,r);gr.addColorStop(0,'rgba(255,255,255,.9)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,128,128)}return new THREE.CanvasTexture(cv)})();
-const clouds=[];for(let k=0;k<16;k++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:cloudTex,transparent:true,opacity:.85,depthWrite:false,fog:false}));const a=Math.random()*6.3,r=250+Math.random()*450;sp.position.set(Math.cos(a)*r,210+Math.random()*120,Math.sin(a)*r-80);const sc=180+Math.random()*220;sp.scale.set(sc,sc*.45,1);scene.add(sp);clouds.push(sp)}
+const clouds=[];for(let k=0;k<16;k++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:cloudTex,transparent:true,opacity:.85,depthWrite:false,fog:false}));const a=Math.random()*6.3,r=250+Math.random()*450;sp.position.set(Math.cos(a)*r,210+Math.random()*120,Math.sin(a)*r-80);const sc=180+Math.random()*220;sp.scale.set(sc,sc*.45,1);sp.visible=false;clouds.push(sp)}
 
 const RS=600,SEG=QS[Q].seg;
 const tg=new THREE.PlaneGeometry(RS,RS,SEG,SEG);tg.rotateX(-Math.PI/2);
@@ -1594,7 +1594,7 @@ else if((!save.lifts||!save.lifts.length)&&(save.day||1)===1){$('mIntro').classL
 const SN=QS[Q].snow,snowPos=new Float32Array(SN*3);for(let i=0;i<SN;i++){snowPos[i*3]=(Math.random()-.5)*240;snowPos[i*3+1]=Math.random()*140;snowPos[i*3+2]=(Math.random()-.5)*240}
 const snowG=new THREE.BufferGeometry();snowG.setAttribute('position',new THREE.BufferAttribute(snowPos,3));
 const flakeTex=(()=>{const cv=document.createElement('canvas');cv.width=cv.height=32;const g=cv.getContext('2d');const gr=g.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.45,'rgba(255,255,255,.85)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,32,32);return new THREE.CanvasTexture(cv)})();
-const snow=new THREE.Points(snowG,new THREE.PointsMaterial({color:0xffffff,map:flakeTex,size:1.15,transparent:true,opacity:.9,depthWrite:false}));snow.frustumCulled=false;scene.add(snow);
+const snow=new THREE.Points(snowG,new THREE.PointsMaterial({color:0xffffff,size:.8,transparent:true,opacity:.85,depthWrite:false}));snow.frustumCulled=false;scene.add(snow);
 const SKY={dt:new THREE.Color(0x3d7fd0),dh:new THREE.Color(0xd4e6f7),st:new THREE.Color(0x3a4a86),sh:new THREE.Color(0xf6a06a),nt:new THREE.Color(0x0b1838),nh:new THREE.Color(0x2c3f6e)};
 const grey=new THREE.Color(0xb8c2cf),_sd=new THREE.Vector3(),_md=new THREE.Vector3(.45,.75,-.4).normalize(),_tc=new THREE.Color(),_hc=new THREE.Color(),_w=new THREE.Color(0xffffff);
 const hemiDay=new THREE.Color(0xd6e6ff),hemiNight=new THREE.Color(0x8ea6e0),winDay=new THREE.Color(0x8fa7bf),winNight=new THREE.Color(0xffd27a);
