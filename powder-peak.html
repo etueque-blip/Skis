@@ -437,6 +437,17 @@ let colNormal,colSteep;
   tg.setAttribute('color',new THREE.BufferAttribute(colNormal.slice(),3));tg.computeVertexNormals();
 }
 const terrain=new THREE.Mesh(tg,new THREE.MeshLambertMaterial({vertexColors:true}));terrain.receiveShadow=true;scene.add(terrain);
+// outer lands: the lower part of the mountain and far hills, so there is no empty void past the map
+function skirtH(x,z){const E=299,cx=clamp(x,-E,E),cz=clamp(z,-E,E),d=Math.max(Math.abs(x),Math.abs(z))-E;if(d<=0)return heightAt(x,z)-2;
+  const h0=heightAt(cx,cz),k=sstep(0,700,d),back=sstep(0,400,-z-300),front=sstep(0,500,z-300);
+  return h0*(1-k)+(-140*front-20)*k+(160*rfbm(x*.0025+4,z*.0025+1)*(1-front*.8)+260*back*rfbm(x*.002,z*.002))*sstep(60,900,d)+30*(fbm(x*.006,z*.006)-.5)*sstep(0,200,d)}
+{const SEGN=220,g=new THREE.PlaneGeometry(2,2,SEGN,SEGN);g.rotateX(-Math.PI/2);const P=g.attributes.position,col=new Float32Array(P.count*3);
+  const map=u=>{const a=Math.abs(u);return Math.sign(u)*(a<.28?a/.28*300:300+Math.pow((a-.28)/.72,2)*2700)};
+  for(let i=0;i<P.count;i++){const x=map(P.getX(i)),z=map(P.getZ(i)),y=skirtH(x,z);P.setXYZ(i,x,y,z);
+    const d=Math.max(Math.abs(x),Math.abs(z))-300,fv=fbm(x*.012+3,z*.012,4),fo=d>0?sstep(.44,.58,fv+.06*sstep(0,600,d)):0,fade=sstep(250,2600,d),sp=.55+.45*fbm(x*.08,z*.08,2);
+    let c=[.92+(.16*sp-.92)*fo,.95+(.34*sp-.95)*fo,1+(.26*sp-1)*fo];if(d<=0)c=[.9,.93,.98];c=c.map((v,j)=>v+([.72,.8,.92][j]-v)*fade);col.set(c,i*3)}
+  g.setAttribute('color',new THREE.BufferAttribute(col,3));g.computeVertexNormals();
+  const sk=new THREE.Mesh(g,new THREE.MeshLambertMaterial({vertexColors:true}));sk.receiveShadow=true;sk.renderOrder=-1;scene.add(sk)}
 let steepView=false;
 function setSteep(on){steepView=on;tg.attributes.color.array.set(on?colSteep:colNormal);tg.attributes.color.needsUpdate=true;$('bSteep').classList.toggle('on',on);$('sLeg').hidden=!on}
 
@@ -2078,7 +2089,14 @@ function frame(now){
 // former resorts glow on the far horizon behind the mountain
 META.list.filter(r=>r.n<RESORT).forEach((r,i,a)=>{const I=resortInfo(r),x=(i-(a.length-1)/2)*260,z=-760,y=300;const l=label(`🏔️ Курорт №${r.n} · ур. ${I.lvl}`,'#fde68a',.15);l.material.fog=false;l.position.set(x,y+60,z);scene.add(l);
   const pts=[];for(let k=0;k<40;k++)pts.push(x+(Math.random()-.5)*120,y-60+Math.random()*90,z+(Math.random()-.5)*40);const p=new THREE.Points(new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute(pts,3)),lampGlowMat);p.material.fog=false;scene.add(p)});
-buildRoad();window.roadReady=true;buildings.forEach(accessRoad);
+{const pts=[];for(let k=0;k<9000&&pts.length<(HIQ?5000:2200);k++){const a=hash(k,71)*6.283,r=310+Math.pow(hash(k,72),1.6)*520,x=Math.cos(a)*r,z=Math.sin(a)*r;if(Math.abs(x)<300&&Math.abs(z)<300)continue;if(fbm(x*.012+3,z*.012,4)<.5)continue;if(Math.abs(x-6)<14&&z>290)continue;pts.push([x,z])}
+ const im=new THREE.InstancedMesh(treeGeo,new THREE.MeshLambertMaterial({color:0x1f5f3a}),pts.length);pts.forEach(([x,z],i)=>{const sc=1+hash(i,73)*.8;_m.makeScale(sc,sc*1.1,sc).setPosition(x,skirtH(x,z)-.3,z);im.setMatrixAt(i,_m)});scene.add(im)}
+buildRoad();window.roadReady=true;
+{const pts=[];let x=ROAD.length?ROAD[ROAD.length-1].x:6;for(let z=(ROAD.length?ROAD[ROAD.length-1].z:296);z<2600;z+=6){const xx=x+Math.sin(z*.006)*70*sstep(300,700,z);pts.push([xx,z])}
+ const pos=[],idx=[];pts.forEach(([x,z],i)=>{const n=pts[Math.min(i+1,pts.length-1)],p0=pts[Math.max(i-1,0)];let tx=n[0]-p0[0],tz=n[1]-p0[1];const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const w=4.2;
+   for(const sd of [1,-1]){const X=x-tz*w*sd,Z=z+tx*w*sd;pos.push(X,skirtH(X,Z)+.6,Z)}if(i<pts.length-1){const k=i*2;idx.push(k,k+2,k+1,k+1,k+2,k+3)}});
+ const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();
+ const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:0x384150,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4}));scene.add(m)}buildings.forEach(accessRoad);
 drawBorder();renderQuest();setTool('look');applyQuality(Q,false);
 requestAnimationFrame(frame);runLoader();
 /*PWA*/(function(){const inTg=/tgWebApp/.test(location.hash+location.search);
