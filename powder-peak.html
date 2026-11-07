@@ -871,6 +871,10 @@ const ratingHist=save&&save.ratingHist||[];
 function pushRating(h){ratingHist.push(clamp(h,0,100));if(ratingHist.length>80)ratingHist.shift()}
 function rating(){const base=ratingHist.length?ratingHist.reduce((a,b)=>a+b,0)/ratingHist.length/20:3;const mix=new Set(runs.map(r=>Math.min(2,r.diff))).size;return clamp(base+(mix>=3?.25:0)+Math.min(.25,buildings.filter(b=>BT[b.type].food).length*.1),0,5)}
 const _v=new THREE.Vector3();
+function meshH(x,z){const st=RS/SEG,fi=(x+RS/2)/st,fj=(z+RS/2)/st,i=Math.floor(fi),j=Math.floor(fj),h0=heightAt(x,z);if(i<0||j<0||i>=SEG||j>=SEG)return h0;
+  const P=tg.attributes.position,n=SEG+1,y=(a,b)=>P.getY(b*n+a),h00=y(i,j),h10=y(i+1,j),h01=y(i,j+1),h11=y(i+1,j+1),fx=fi-i,fz=fj-j;
+  const A=fx+fz<1?h00+(h10-h00)*fx+(h01-h00)*fz:h11+(h01-h11)*(1-fx)+(h10-h11)*(1-fz),B=fx>fz?h00+(h10-h00)*fx+(h11-h10)*fz:h00+(h01-h00)*fz+(h11-h01)*fx;
+  return Math.max(h0,A,B)}
 function onAnyRun(p){for(const R of runs){const w=(R.w||3.9)+.3;for(let i=0;i<R.sm.length;i+=3){const q=R.sm[i];if(Math.abs(q.x-p.x)<w+3&&Math.abs(q.z-p.z)<w+3&&Math.hypot(q.x-p.x,q.z-p.z)<w)return true}}return false}
 function callPatrol(v){const huts=buildings.filter(b=>b.type==='patrol');if(!huts.length||skiers.filter(x=>x.state==='patrol').length>=4)return;
   let hut=huts[0],bd=1e9;huts.forEach(h=>{const d=Math.hypot(h.x-v.pos.x,h.z-v.pos.z);if(d<bd){bd=d;hut=h}});
@@ -882,7 +886,7 @@ function updPatrol(s,dt){const m=s.mesh,v=s.victim;let tx,tz;
   if(s.phase===0){if(!skiers.includes(v)||v.state!=='ski'){s.phase=2}else{tx=v.pos.x;tz=v.pos.z;if(Math.hypot(tx-s.pos.x,tz-s.pos.z)<2.2){s.phase=1;s.t=2.2}}}
   if(s.phase===1){s.t-=dt;m.rotation.set(.5,m.rotation.y,0);if(s.t<=0){v.fallT=.6;v.wasSaved=true;v.rescuer=null;s.phase=2;m.rotation.x=0;day.rescues=(day.rescues||0)+1}m.position.copy(s.pos);return}
   if(s.phase===2){tx=s.hut.x;tz=s.hut.z;if(Math.hypot(tx-s.pos.x,tz-s.pos.z)<3){if(v)v.rescuer=null;s.state='leave';s.fade=1;return}}
-  const dx=tx-s.pos.x,dz=tz-s.pos.z,l=Math.hypot(dx,dz)||1,sp=11*dt;s.pos.x+=dx/l*Math.min(sp,l);s.pos.z+=dz/l*Math.min(sp,l);s.pos.y=heightAt(s.pos.x,s.pos.z)+(onAnyRun(s.pos)?.5:.25);
+  const dx=tx-s.pos.x,dz=tz-s.pos.z,l=Math.hypot(dx,dz)||1,sp=11*dt;s.pos.x+=dx/l*Math.min(sp,l);s.pos.z+=dz/l*Math.min(sp,l);s.pos.y=meshH(s.pos.x,s.pos.z)+(onAnyRun(s.pos)?.5:.25);
   m.position.copy(s.pos);m.rotation.set(0,Math.atan2(dx,dz)+Math.sin(performance.now()/200)*.25,0)}
 function updateSkier(s,dt){
   const m=s.mesh;
@@ -897,7 +901,7 @@ function updateSkier(s,dt){
       else if(a.lift){if(!lifts.includes(a.lift))return decide(s);s.state='queue';s.lift=a.lift;s.wait=0;a.lift.queue.push(s)}
       else{if(!runs.includes(a.run)||(isNight()&&!a.run.lit))return decide(s);s.state='ski';s.run=a.run;s.d=0;a.run.skiers++}
     }else{s.pos.x+=dx/l*sp;s.pos.z+=dz/l*sp;m.rotation.y=Math.atan2(dx,dz)}
-    s.pos.y=heightAt(s.pos.x,s.pos.z)+(onAnyRun(s.pos)?.5:.25);m.position.copy(s.pos);m.position.y+=Math.abs(Math.sin(performance.now()/120+s.phase))*.15;m.rotation.z=0;m.rotation.x=0;
+    s.pos.y=meshH(s.pos.x,s.pos.z)+(onAnyRun(s.pos)?.5:.25);m.position.copy(s.pos);m.position.y+=Math.abs(Math.sin(performance.now()/120+s.phase))*.15;m.rotation.z=0;m.rotation.x=0;
   }else if(s.state==='eat'){
     s.t-=dt;if(s.t<=0){const b=s.eatAt,T=BT[b.type];m.visible=true;s.ate=true;s.happy=clamp(s.happy+9,0,100);money+=T.food;day.food+=T.food;b.visits++;b.earned+=T.food;decide(s)}
   }else if(s.state==='queue'){
@@ -924,7 +928,7 @@ function updateSkier(s,dt){
     let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;
     const wig=Math.sin(s.d*.32+s.phase)*(2.2-s.skill*.4);
     const x=a.x+(b.x-a.x)*f-tz*wig,z=a.z+(b.z-a.z)*f+tx*wig;
-    s.pos.set(x,heightAt(x,z)+.5,z);m.position.copy(s.pos);
+    s.pos.set(x,meshH(x,z)+.5,z);m.position.copy(s.pos);
     if(m.userData.board)m.rotation.set(-Math.cos(s.d*.32+s.phase)*.3,Math.atan2(tx,tz)+Math.PI/2+Math.cos(s.d*.32+s.phase)*.35,0);
     else m.rotation.set(0,Math.atan2(tx,tz)+Math.cos(s.d*.32+s.phase)*.5,-Math.cos(s.d*.32+s.phase)*.35);
   }else if(s.state==='leave'){
@@ -1552,7 +1556,7 @@ function spawnCar(dir){if(!ROAD.length||cars.length>=18)return;const g=new THREE
 function updCars(dt){for(let i=cars.length-1;i>=0;i--){const c=cars[i];c.d+=c.dir*c.v*dt;const end=c.dir<0?c.d<=0:c.d>=ROAD.len;
   const yaw=roadAt(c.d,c.dir<0?1:-1,c.g.position);c.g.rotation.y=yaw+(c.dir<0?Math.PI:0);if(end){scene.remove(c.g);cars.splice(i,1)}}}
 /* ================= ride mode v2: ski your own run ================= */
-const RSC=.32;// ride scale: rider metres -> world units
+const RSC=.6;// ride scale: rider metres -> world units
 // fine terrain patch that follows the rider so the slope looks smooth up close
 const FP_SIZE=150,FP_SEG=170;const fpGeo=new THREE.PlaneGeometry(FP_SIZE,FP_SIZE,FP_SEG,FP_SEG);fpGeo.rotateX(-Math.PI/2);
 fpGeo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(fpGeo.attributes.position.count*3),3));
@@ -1609,7 +1613,7 @@ function pose(m,o){// o: {c crouch 0..1, st steer, lean, brake, air, tuck, t, sl
   U.arms.forEach((a,i)=>{const sd=i?1:-1;let rx=o.tuck?-1.25:-.38,rz=o.air?sd*.75:sd*.12;if(o.pole)rx+=Math.sin(o.t*9+(i?Math.PI:0))*.5;a.rotation.set(rx,0,rz);a.userData.pole.rotation.x=o.tuck?-1.1:.55});
   U.skis.forEach((s,i)=>{const sd=i?1:-1;s.position.x=(o.brake?.3:.18)*sd;s.rotation.y=o.brake?-.3*sd:0;s.rotation.z=-o.lean*.9})}
 // gates
-const KS=.5;// kicker / gate size in world units for the small rider
+const KS=.9;// kicker / gate size in world units for the small rider
 const gatePoleG=new THREE.CylinderGeometry(.05,.05,1.3,6).translate(0,.65+.45,0);
 function makeGates(R){const g=new THREE.Group(),list=[];const n=R.sm.length;let side=1;
   for(let i=18;i<n-14;i+=24){const a=R.sm[i-1],b=R.sm[i+1];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const lx=-tz,lz=tx,w=1.6;
@@ -1641,7 +1645,7 @@ const sprayPts=new THREE.Points(sprayG,new THREE.PointsMaterial({color:0xffffff,
 const PILE_N=500,pileGeo=new THREE.SphereGeometry(.55,8,5);pileGeo.scale(1.4,.38,.9);
 const piles=new THREE.InstancedMesh(pileGeo,new THREE.MeshLambertMaterial({color:0xf8fbff}),PILE_N);piles.count=0;piles.receiveShadow=true;piles.castShadow=true;piles.frustumCulled=false;scene.add(piles);let pileI=0,pileT=0;
 function addPile(x,z,yaw,sc){const y=heightAt(x,z)+.5;_m.makeRotationY(yaw);_m.scale(new THREE.Vector3(sc,sc,sc));_m.setPosition(x,y,z);piles.setMatrixAt(pileI%PILE_N,_m);pileI++;piles.count=Math.min(pileI,PILE_N);piles.instanceMatrix.needsUpdate=true}
-function emitSpray(p,vx,vy,vz){const q=sprayV.find(x=>x.t>=1);if(!q)return;const k=ride?RSC*1.4:1;q.x=p.x+(Math.random()-.5)*.6*k;q.y=p.y+.5+.15*k;q.z=p.z+(Math.random()-.5)*.6*k;q.vx=vx*k;q.vy=vy*k;q.vz=vz*k;q.g=12*k;q.t=0}
+function emitSpray(p,vx,vy,vz){const q=sprayV.find(x=>x.t>=1);if(!q)return;const k=1;q.x=p.x+(Math.random()-.5)*.6*k;q.y=p.y+.5+.15*k;q.z=p.z+(Math.random()-.5)*.6*k;q.vx=vx*k;q.vy=vy*k;q.vz=vz*k;q.g=12*k;q.t=0}
 function updSpray(dt){for(let i=0;i<sprayN;i++){const q=sprayV[i];if(q.t<1){q.t+=dt/.7;q.vy-=(q.g||12)*dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.z+=q.vz*dt}sprayPos[i*3]=q.x;sprayPos[i*3+1]=q.t<1?q.y:-999;sprayPos[i*3+2]=q.z}sprayG.attributes.position.needsUpdate=true}
 // collisions
 let treeHash=null;
@@ -1698,7 +1702,7 @@ function startRide(R,opt){opt=opt||{};$('mRide').classList.remove('show');if(!R&
     gates:R?makeGates(R):null,spin:0,flip:0,score:0,combo:0,comboT:0,grabT:0,board:gear==='board',rec:[],recT:0,boost:1,boosting:false,anchor:null,anchorT:0,stuckT:0,warnT:0,jumpLatch:false,prevSpeed:speed,camYaw:f0,skid:0,sp:0};
   speed=1;document.querySelectorAll('#speed button').forEach(x=>x.classList.toggle('on',x.dataset.s==='1'));
   {const kp=(()=>{try{return localStorage.getItem('powderpeak-keys')}catch(e){return null}})();if(kp!=='0'){$('ride').classList.remove('nokeys');clearTimeout(window._kT);window._kT=setTimeout(()=>{if(ride)$('ride').classList.add('nokeys')},10000)}}
-  finePatch.visible=HIQ;fpC=null;if(HIQ)fineUpd(ride.p);rider.scale.setScalar(1.3*RSC);ghost.scale.setScalar(1.3*RSC);camera.near=.05;camera.updateProjectionMatrix();setGear(rider,gear==='board');setGear(ghost,gear==='board');buildTreeHash();rider.visible=true;controls.enabled=false;document.body.classList.add('riding');$('ride').hidden=false;
+  finePatch.visible=HIQ;fpC=null;if(HIQ)fineUpd(ride.p);rider.scale.setScalar(1.25);ghost.scale.setScalar(1.25);camera.near=.2;camera.updateProjectionMatrix();setGear(rider,gear==='board');setGear(ghost,gear==='board');buildTreeHash();rider.visible=true;controls.enabled=false;document.body.classList.add('riding');$('ride').hidden=false;
   trI=0;trLast=null;trG.setDrawRange(0,0);
   const gh=ghosts[key];ghost.visible=!!(gh&&gh.length>3);
   $('rName').innerHTML=R?`<b style="color:${DIFF[R.diff].css};min-width:0;font-size:14px">${DIFF[R.diff].s} ${R.name}</b>`:`<b style="min-width:0;font-size:14px">🏔️ Фрирайд</b>`;
@@ -1789,8 +1793,8 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
     else if(r.t>2&&Math.hypot(p.x-BASE.x,p.z-BASE.z)<24){finishRide();return}
     // effects: spray, tracks, record ghost
     if(!r.air&&sp>4){const n=Math.min(10,Math.round(skid/4+(brake?5:0)+sp*.08));for(let k=0;k<n;k++)emitSpray(p,-r.vx*.15+lx*inp*5+(Math.random()-.5)*2,1.2+Math.random()*2.2,-r.vz*.15+lz*inp*5+(Math.random()-.5)*2)}
-    pileT-=dt;if(!r.air&&sp>6&&(skid>7||Math.abs(r.st)>.55||brake)&&pileT<=0){pileT=.05;const side=inp?Math.sign(inp):(Math.random()<.5?-1:1),o=1.25*RSC;addPile(p.x+lx*side*o+(Math.random()-.5)*.15,p.z+lz*side*o+(Math.random()-.5)*.15,r.f,clamp(.5+skid/60+(brake?.4:0),.5,1.4)*RSC*1.3)}
-    if(!r.air&&sp>1){const s=.3*RSC,a={x:p.x-lx*s,y:heightAt(p.x-lx*s,p.z-lz*s)+.5,z:p.z-lz*s},b={x:p.x+lx*s,y:heightAt(p.x+lx*s,p.z+lz*s)+.5,z:p.z+lz*s};if(trLast&&Math.hypot(a.x-trLast[0].x,a.z-trLast[0].z)>.6){addTrack(trLast[0],a);addTrack(trLast[1],b);trLast=[a,b]}else if(!trLast)trLast=[a,b]}else trLast=null;
+    pileT-=dt;if(!r.air&&sp>6&&(skid>7||Math.abs(r.st)>.55||brake)&&pileT<=0){pileT=.05;const side=inp?Math.sign(inp):(Math.random()<.5?-1:1),o=1.25;addPile(p.x+lx*side*o+(Math.random()-.5)*.15,p.z+lz*side*o+(Math.random()-.5)*.15,r.f,clamp(.5+skid/60+(brake?.4:0),.5,1.4))}
+    if(!r.air&&sp>1){const s=.3,a={x:p.x-lx*s,y:heightAt(p.x-lx*s,p.z-lz*s)+.5,z:p.z-lz*s},b={x:p.x+lx*s,y:heightAt(p.x+lx*s,p.z+lz*s)+.5,z:p.z+lz*s};if(trLast&&Math.hypot(a.x-trLast[0].x,a.z-trLast[0].z)>.6){addTrack(trLast[0],a);addTrack(trLast[1],b);trLast=[a,b]}else if(!trLast)trLast=[a,b]}else trLast=null;
     r.recT+=dt;if(r.recT>=.1){r.recT=0;r.rec.push([+p.x.toFixed(1),+p.y.toFixed(1),+p.z.toFixed(1),+r.f.toFixed(2)])}
     if(!r.air&&sp<3.2&&!brake){const k=(3.2-sp)*2.2*dt;r.vx+=Math.sin(r.f)*k;r.vz+=Math.cos(r.f)*k}
     if(sp<1.2&&!brake&&!r.air){r.stuckT+=dt;if(r.stuckT>1.6)unstick(r,'↺ Подтолкнули — едем дальше')}else r.stuckT=0;
@@ -1802,16 +1806,16 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
   // rider pose
   r.lean+=((r.st*clamp(sp/14,0,1)*.6)-r.lean)*Math.min(1,dt*8);
   const crouch=tuck?1:(brake?.45:clamp(.22+sp*.012,0,.55));
-  rider.position.copy(p);rider.position.y+=.47;if(r.board)rider.rotation.set(r.tumble-r.lean*.9,r.f+Math.PI/2+r.spin,r.flip);else rider.rotation.set(r.tumble-r.flip,r.f+r.spin,-r.lean);pose(rider,{c:r.air&&tuck?.9:crouch,st:r.st,lean:r.lean,brake:brake&&!r.air,air:r.air,tuck,t:r.t,grab:r.air&&tuck,pole:tuck&&sp<6&&!r.air});
+  rider.position.copy(p);rider.position.y=Math.max(p.y,meshH(p.x,p.z))+.47;if(r.board)rider.rotation.set(r.tumble-r.lean*.9,r.f+Math.PI/2+r.spin,r.flip);else rider.rotation.set(r.tumble-r.flip,r.f+r.spin,-r.lean);pose(rider,{c:r.air&&tuck?.9:crouch,st:r.st,lean:r.lean,brake:brake&&!r.air,air:r.air,tuck,t:r.t,grab:r.air&&tuck,pole:tuck&&sp<6&&!r.air});
   // ghost of the best run
   if(ghost.visible){const gh=ghosts[r.key],k=r.t*10,i=Math.min(gh.length-2,Math.floor(k)),f=Math.min(1,k-i),a=gh[i],b=gh[i+1];ghost.position.set(a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f+.47,a[2]+(b[2]-a[2])*f);ghost.rotation.set(0,a[3]+(b[3]-a[3])*f,0);pose(ghost,{c:.4,st:0,lean:0,t:r.t})}
   // camera
   const U=rider.userData,fp=camMode===2;U.torso.visible=!fp;U.legs.forEach(l=>l.visible=!fp);
   const tyaw=sp>2.5?Math.atan2(r.vx,r.vz):r.f;let dy=tyaw-r.camYaw;while(dy>Math.PI)dy-=2*Math.PI;while(dy<-Math.PI)dy+=2*Math.PI;r.camYaw+=dy*Math.min(1,dt0*(fp?12:4));
   const cdx=Math.sin(fp?r.f:r.camYaw),cdz=Math.cos(fp?r.f:r.camYaw);
-  if(fp){_hp.set(p.x+Math.sin(r.f)*.35*RSC,p.y+.47+(2.6-crouch*.45)*1.3*RSC,p.z+Math.cos(r.f)*.35*RSC);camera.position.copy(_hp);_look.set(p.x+cdx*12*RSC*2,p.y+.47+.3,p.z+cdz*12*RSC*2);camLook.copy(_look)}
-  else{const back=camMode===1?6:2.35,up=camMode===1?2.8:1.05;_cam.set(p.x-cdx*back,0,p.z-cdz*back);_cam.y=Math.max(p.y+.47+up,heightAt(_cam.x,_cam.z)+.95);
-    camera.position.lerp(_cam,1-Math.exp(-dt0*7));_look.set(p.x+cdx*7,p.y+.47+.55,p.z+cdz*7);camLook.lerp(_look,1-Math.exp(-dt0*12))}
+  if(fp){_hp.set(p.x+Math.sin(r.f)*.35,Math.max(p.y,meshH(p.x,p.z))+.47+(2.6-crouch*.45)*1.25,p.z+Math.cos(r.f)*.35);camera.position.copy(_hp);_look.set(p.x+cdx*12*RSC*2,p.y+.47+.3,p.z+cdz*12*RSC*2);camLook.copy(_look)}
+  else{const back=camMode===1?15:6.2,up=camMode===1?6.5:2.7;_cam.set(p.x-cdx*back,0,p.z-cdz*back);_cam.y=Math.max(p.y+.47+up,meshH(_cam.x,_cam.z)+1.6);
+    camera.position.lerp(_cam,1-Math.exp(-dt0*7));_look.set(p.x+cdx*10,p.y+.47+1.4,p.z+cdz*10);camLook.lerp(_look,1-Math.exp(-dt0*12))}
   if(sp>24&&!fp){camera.position.x+=(Math.random()-.5)*(sp-24)*.012*RSC;camera.position.y+=(Math.random()-.5)*(sp-24)*.012*RSC}
   camera.lookAt(camLook);if(fp)camera.rotateZ(-r.lean*.35);
   const fv=(innerWidth<innerHeight?66:52)+sp*.45;if(Math.abs(camera.fov-fv)>.3){camera.fov+=(fv-camera.fov)*.1;camera.updateProjectionMatrix()}
