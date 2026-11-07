@@ -728,9 +728,18 @@ function bModel(type){
     g.add(box(.9,2.4,.9,0x6b7280,1.6,6.2,1.2),box(1.2,2,.1,0x3f2a1a,0,1.9,-3.05));windows(g,2,2.9,-3.06,3,Math.PI);
     g.add(box(4.4,.18,1.3,0x6b4226,0,3.1,-3.7));for(let k=-2;k<=2;k++)g.add(box(.1,.8,.1,0x6b4226,k*1.05,3.55,-4.3));g.add(box(4.4,.1,.1,0x6b4226,0,3.95,-4.3));
     g.userData.chimney=[1.6,7.5,1.2]}
-  else if(type==='hotel'){g.add(box(18,10,10,0xe9dcc4,0,5,0),box(18.4,.5,10.4,0x7c5a3a,0,10.2,0));const r=new THREE.Mesh(roofGeo(19,10.6,3.6),mat(0x334155));r.rotation.y=0;r.position.y=10.4;
-    const rr=new THREE.Mesh(roofGeo(11,19,3.6),mat(0x334155));rr.rotation.y=Math.PI/2;rr.position.y=10.4;g.add(rr);
-    for(let f=0;f<3;f++){windows(g,6,2+f*3,-5.02,2.8,Math.PI);windows(g,6,2+f*3,5.02,2.8,0);if(f)g.add(box(17,.2,1.1,0x7c5a3a,0,f*3+.75,-5.6),box(17,.7,.08,0x5b3a24,0,f*3+1.15,-6.1))}g.add(box(3,2.8,.3,0x3f2a1a,0,1.4,-5.1),box(5,.3,2.6,0x7c2d12,0,3.2,-6.2),box(.2,3,.2,0x5b3a24,-2.3,1.6,-7.3),box(.2,3,.2,0x5b3a24,2.3,1.6,-7.3));g.userData.chimney=[6,14.4,2];g.add(box(1.2,3,1.2,0x6b7280,6,12.6,2))}
+  else if(type==='hotel'){// stone base, timber upper floors, balconies, entrance canopy, lit sign
+    g.add(box(18.6,2.6,10.6,0x9ca3af,0,1.3,0));                                   // stone ground floor
+    g.add(box(18,7.6,10,0xf1e7d6,0,6.4,0));                                       // plaster upper floors
+    for(const x of [-9,9])g.add(box(.5,7.6,10.2,0x7c5a3a,x,6.4,0));                // timber corners
+    for(const z of [-5.05,5.05])for(let f=0;f<2;f++)g.add(box(18.2,.25,.3,0x7c5a3a,0,4.6+f*2.6,z));
+    const rf=new THREE.Mesh(roofGeo(11.6,19.6,4.2),mat(0x2f3a4a));rf.rotation.y=Math.PI/2;rf.position.y=10.2;g.add(rf);
+    const sn=new THREE.Mesh(roofGeo(11.2,19.2,4.0),mat(0xf8fafc));sn.rotation.y=Math.PI/2;sn.position.y=10.45;sn.scale.set(.98,.5,.98);g.add(sn);
+    for(const x of [-5,0,5]){g.add(box(1.8,1.6,1.4,0xf1e7d6,x,11.2,-4.3));const dr=new THREE.Mesh(roofGeo(2.3,1.8,1),mat(0x2f3a4a));dr.position.set(x,12,-4.3);g.add(dr);const w=new THREE.Mesh(new THREE.PlaneGeometry(.9,.9),winMat);w.position.set(x,11.3,-5.02);w.rotation.y=Math.PI;g.add(w)}
+    for(let f=0;f<3;f++){windows(g,6,3.6+f*2.6,-5.06,2.8,Math.PI);windows(g,6,3.6+f*2.6,5.06,2.8,0);if(f){g.add(box(16.6,.18,1.1,0x7c5a3a,0,f*2.6+2.7,-5.6),box(16.6,.6,.08,0x5b3a24,0,f*2.6+3.1,-6.1))}}
+    g.add(box(3.2,2.4,.3,0x3f2a1a,0,1.3,-5.35),box(6,.3,3.2,0x7c2d12,0,2.9,-6.8),box(.25,2.9,.25,0x5b3a24,-2.7,1.45,-8.2),box(.25,2.9,.25,0x5b3a24,2.7,1.45,-8.2));
+    const sg=label('🏨 ОТЕЛЬ','#fde68a',.1);sg.position.set(0,9.6,-5.3);g.add(sg);
+    g.userData.chimney=[6,14.4,2];g.add(box(1.2,3,1.2,0x6b7280,6,12.6,2))}
   else if(type==='restaurant'){g.userData.chimney=[4,8.6,2];g.add(box(1.1,4,1.1,0x6b7280,4,6.6,2));g.add(box(12,4.6,9,0x6b4226,0,2.3,0));const r=new THREE.Mesh(roofGeo(10,13,3.4),mat(0x9f1239));r.rotation.y=Math.PI/2;r.position.y=4.6;g.add(r);
     const gl=new THREE.Mesh(new THREE.PlaneGeometry(9,2.6),winMat);gl.position.set(0,2.2,-4.53);gl.rotation.y=Math.PI;g.add(gl);
     for(let k=0;k<3;k++){g.add(box(1.6,.8,1,0x7c4a26,-4+k*4,.4,-7),box(.1,2.2,.1,0x334155,-4+k*4,1.5,-7))}
@@ -768,23 +777,31 @@ function bCheck(type,x,z,rot){
 const BL={stay:['Стандарт','Люкс','Делюкс','Сюит','Президентский'],food:['Обычный','Уютный','Шеф-повар','Гурмэ','Высокая кухня'],other:['Обычный','Улучшенный','Продвинутый','Премиум','Топ']};
 const MAXL=5;
 const BLM=[1,2,3.5,6,10];// income multiplier per level
-const lvlNames=b=>BT[b.type].guests?BL.stay:BT[b.type].food?BL.food:BL.other;
+const lvlNames=b=>b.type==='hotel'?BL.stay.map(x=>'Номера «'+x+'»'):BT[b.type].guests?BL.stay:BT[b.type].food?BL.food:BL.other;
 const bMul=b=>BLM[Math.min(MAXL,b.lvl||1)-1];
 const bUpCost=b=>Math.round(BT[b.type].cost*[1.5,3,6,12][(b.lvl||1)-1]/100)*100;
-function decorateLevel(B){if(B.deco){B.g.remove(B.deco);B.deco=null}const L=B.lvl||1;if(L<2)return;const d=new THREE.Group(),T=BT[B.type],hw=B.fw/2,hd=B.fd/2,top=B.type==='hotel'?13.5:B.type==='parking'?1:6;
+const GROW=[1,1.1,1.22,1.36,1.55];const WALL=[null,0x8b5a2b,0x6b3f1f,0x4a2c17,0x2b1a10];
+function decorateLevel(B){if(B.deco){B.g.remove(B.deco);B.deco=null}const L=B.lvl||1;
+  const model=B.g.children[0],grows2=B.type!=='hotel'&&(BT[B.type].guests||BT[B.type].food);
+  if(model&&grows2){const k=GROW[L-1];model.scale.set(k,k,k);if(WALL[L-1]&&B.type==='chalet')model.traverse(o=>{if(o.isMesh&&o.material&&o.material.color&&o.material.color.getHex()===0x8b5a2b){o.material=o.material.clone();o.material.color.setHex(WALL[L-1])}})}
+  if(L>=5)clearTreesRect(B.x+(B.fw/2+5),B.z,B.fw/2+12,B.fd/2+9,0);
+  if(L<2)return;const kk=B.type!=='hotel'&&(BT[B.type].guests||BT[B.type].food)?GROW[L-1]:1,d=new THREE.Group(),T=BT[B.type],hw=B.fw/2*kk,hd=B.fd/2*kk,top=(B.type==='hotel'?13.5:B.type==='parking'?1:6)*kk;
   // gold trim, flags, and for the top level a glowing roof sign
   const gold=new THREE.MeshPhongMaterial({color:0xfacc15,shininess:120,specular:0xffffff,emissive:0x5a4000});
   for(const [x,z] of [[-hw,-hd],[hw,-hd],[-hw,hd],[hw,hd]]){const pole=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,3,6),mat(0xe5e7eb));pole.position.set(x,top+1.5,z);d.add(pole);
     if(L>=3){const fl=new THREE.Mesh(new THREE.PlaneGeometry(1.1,.65),new THREE.MeshLambertMaterial({color:[0xdc2626,0x2563eb,0x16a34a,0xfacc15][(x>0)*2+(z>0)],side:THREE.DoubleSide}));fl.position.set(x+.55,top+2.6,z);fl.userData.flag=1;d.add(fl)}}
   const trim=new THREE.Mesh(new THREE.BoxGeometry(B.fw+.4,.18,B.fd+.4),gold);trim.position.y=.25;d.add(trim);
-  if(L>=3&&T.guests){const ext=new THREE.Mesh(new THREE.BoxGeometry(B.fw*.6,2.2,B.fd*.6),mat(B.type==='hotel'?0xe9dcc4:0x8b5a2b));ext.position.y=top+.6;d.add(ext);for(let k=-1;k<=1;k++){const w=new THREE.Mesh(new THREE.PlaneGeometry(.9,1),winMat);w.position.set(k*B.fw*.18,top+.7,-B.fd*.3-.01);w.rotation.y=Math.PI;d.add(w)}}
+  if(L>=3&&T.guests&&B.type!=='hotel'){const ext=new THREE.Mesh(new THREE.BoxGeometry(B.fw*.6,2.2,B.fd*.6),mat(B.type==='hotel'?0xe9dcc4:0x8b5a2b));ext.position.y=top+.6;d.add(ext);for(let k=-1;k<=1;k++){const w=new THREE.Mesh(new THREE.PlaneGeometry(.9,1),winMat);w.position.set(k*B.fw*.18,top+.7,-B.fd*.3-.01);w.rotation.y=Math.PI;d.add(w)}}
   if(L>=4){const st=label('✦ '+lvlNames(B)[L-1]+' ✦','#fde047',.13);st.position.y=top+4.5;d.add(st);const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:0xffd36b,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));glow.scale.set(14,14,1);glow.position.y=top+1;d.add(glow);
   }
   if(L>=5){// pool with a deck, loungers and a steaming hot tub
-    const deck=new THREE.Mesh(new THREE.BoxGeometry(7.5,.3,5),mat(0x9a6b45));deck.position.set(hw+4.5,.15,0);d.add(deck);
-    const pool=new THREE.Mesh(new THREE.BoxGeometry(5,.32,3),new THREE.MeshPhongMaterial({color:0x38bdf8,shininess:150,specular:0xffffff,emissive:0x0c4a6e}));pool.position.set(hw+4.2,.2,-.4);d.add(pool);
-    const tub=new THREE.Mesh(new THREE.CylinderGeometry(.9,.9,.4,16),new THREE.MeshPhongMaterial({color:0x7dd3fc,emissive:0x0e7490}));tub.position.set(hw+7,.3,1.6);d.add(tub);tub.userData.steam=1;
-    for(const z of [1.8,-2.2])d.add(box(1.6,.25,.6,0xf8fafc,hw+2.2,.45,z));
+    const plot=new THREE.Mesh(new THREE.BoxGeometry(B.fw*kk+22,.18,B.fd*kk+14),mat(0xcbd5e1));plot.position.set(5,.09,0);d.add(plot);
+    for(const z of [-(hd+6.5),hd+6.5])d.add(box(B.fw*kk+20,.9,.9,0x166534,5,.5,z));
+    for(const [x,z] of [[-hw-1,-hd-6],[hw+14,-hd-6],[-hw-1,hd+6],[hw+14,hd+6]]){d.add(box(.2,2.2,.2,0x334155,x,1.1,z));const lg=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:0xffd27a,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));lg.scale.set(3,3,1);lg.position.set(x,2.3,z);d.add(lg)}
+    const deck=new THREE.Mesh(new THREE.BoxGeometry(11,.3,7),mat(0x9a6b45));deck.position.set(hw+6.5,.2,0);d.add(deck);
+    const pool=new THREE.Mesh(new THREE.BoxGeometry(8,.32,4.4),new THREE.MeshPhongMaterial({color:0x38bdf8,shininess:150,specular:0xffffff,emissive:0x0c4a6e}));pool.position.set(hw+6,.25,-.6);d.add(pool);
+    const tub=new THREE.Mesh(new THREE.CylinderGeometry(.9,.9,.4,16),new THREE.MeshPhongMaterial({color:0x7dd3fc,emissive:0x0e7490}));tub.position.set(hw+10.6,.35,2.3);d.add(tub);tub.userData.steam=1;
+    for(const z of [2.6,1.6,-2.8])d.add(box(1.8,.25,.7,0xf8fafc,hw+2.2,.5,z));
     // helipad
     const pad=new THREE.Mesh(new THREE.CylinderGeometry(3,3,.2,24),mat(0x374151));pad.position.set(-hw-4.5,.12,0);d.add(pad);const hh=label('H','#fde047',.06);hh.position.set(-hw-4.5,.5,0);d.add(hh);
     B.heli={t:Math.random()*40,pad:new THREE.Vector3(-hw-4.5,.2,0)}}
@@ -925,18 +942,25 @@ function callPatrol(v){const huts=buildings.filter(b=>b.type==='patrol');if(!hut
   let hut=huts[0],bd=1e9;huts.forEach(h=>{const d=Math.hypot(h.x-v.pos.x,h.z-v.pos.z);if(d<bd){bd=d;hut=h}});
   const o=makeSkierMesh();o.userData.c=[0xdc2626,0x111827,0xdc2626,0xfacc15,0xf1c7a5,0xf8fafc];o.userData.board=false;
   const P={mesh:o,state:'patrol',victim:v,hut,pos:new THREE.Vector3(hut.x,0,hut.z+hut.fd/2+1),phase:0,happy:100,fade:1,patrol:true};P.pos.y=heightAt(P.pos.x,P.pos.z);
-  v.rescuer=P;v.fallT=Math.max(v.fallT,60);think(v,'rescue');skiers.push(P);
+  v.rescuer=P;P.badFall=Math.random()<.4;v.fallT=Math.max(v.fallT,60);think(v,'rescue');skiers.push(P);
   P.bub=bubble('rescue');o.add(P.bub);P.bubT=1e9}
+function makeSled(){const g=new THREE.Group();g.add(box(1.1,.35,2.6,0xea580c,0,.2,0),box(1.15,.12,2.65,0xf8fafc,0,.42,0),box(.08,.08,1.6,0x334155,-.45,.7,2),box(.08,.08,1.6,0x334155,.45,.7,2));
+  const body=new THREE.Group();body.add(box(.55,.35,1.3,0x2563eb,0,.6,-.2),new THREE.Mesh(new THREE.SphereGeometry(.24,10,8),mat(0xf1c7a5)));body.children[1].position.set(0,.65,.7);body.add(box(1,.12,1.8,0xef4444,0,.8,-.1));g.add(body);g.traverse(o=>{if(o.isMesh)o.castShadow=true});scene.add(g);return g}
 function updPatrol(s,dt){const m=s.mesh,v=s.victim;let tx,tz;
+  if(s.phase===3){tx=s.hut.x;tz=s.hut.z;if(Math.hypot(tx-s.pos.x,tz-s.pos.z)<3){if(s.sled)scene.remove(s.sled);if(v){v.rescuer=null;v.mesh.visible=true;leave(v)}day.carried=(day.carried||0)+1;s.state='leave';s.fade=1;return}
+    const dx=tx-s.pos.x,dz=tz-s.pos.z,l=Math.hypot(dx,dz)||1,spd=6*dt;s.pos.x+=dx/l*Math.min(spd,l);s.pos.z+=dz/l*Math.min(spd,l);s.pos.y=meshH(s.pos.x,s.pos.z)+(onAnyRun(s.pos)?.5:.25);
+    const yaw=Math.atan2(dx,dz);m.position.copy(s.pos);m.rotation.set(.25,yaw,0);if(s.sled){const bx=s.pos.x-dx/l*3.2,bz=s.pos.z-dz/l*3.2;s.sled.position.set(bx,meshH(bx,bz)+.45,bz);s.sled.rotation.y=yaw}return}
   if(s.phase===0){if(!skiers.includes(v)||v.state!=='ski'){s.phase=2}else{tx=v.pos.x;tz=v.pos.z;if(Math.hypot(tx-s.pos.x,tz-s.pos.z)<2.2){s.phase=1;s.t=2.2}}}
-  if(s.phase===1){s.t-=dt;m.rotation.set(.5,m.rotation.y,0);if(s.t<=0){v.fallT=.6;v.wasSaved=true;v.rescuer=null;s.phase=2;m.rotation.x=0;day.rescues=(day.rescues||0)+1}m.position.copy(s.pos);return}
+  if(s.phase===1){s.t-=dt;m.rotation.set(.5,m.rotation.y,0);if(s.t<=0){day.rescues=(day.rescues||0)+1;m.rotation.x=0;
+    if(s.badFall){s.phase=3;s.sled=makeSled();v.state='carried';v.mesh.visible=false;if(v.run){v.run.skiers--;v.run=null}think(s,'saved')}else{v.fallT=.6;v.wasSaved=true;v.rescuer=null;s.phase=2}}m.position.copy(s.pos);return}
   if(s.phase===2){tx=s.hut.x;tz=s.hut.z;if(Math.hypot(tx-s.pos.x,tz-s.pos.z)<3){if(v)v.rescuer=null;s.state='leave';s.fade=1;return}}
   const dx=tx-s.pos.x,dz=tz-s.pos.z,l=Math.hypot(dx,dz)||1,sp=11*dt;s.pos.x+=dx/l*Math.min(sp,l);s.pos.z+=dz/l*Math.min(sp,l);s.pos.y=meshH(s.pos.x,s.pos.z)+(onAnyRun(s.pos)?.5:.25);
   m.position.copy(s.pos);m.rotation.set(0,Math.atan2(dx,dz)+Math.sin(performance.now()/200)*.25,0)}
 function updateSkier(s,dt){
   const m=s.mesh;
   if(s.state==='patrol'){if(s.bub){s.bub.position.y=4}updPatrol(s,dt);return}
-  if(s.state!=='queue'&&s.state!=='eat'&&s.state!=='leave'&&s.state!=='lift'&&s.state!=='patrol'&&!(s.fallT>0)){if(!s.anc||Math.hypot(s.pos.x-s.anc.x,s.pos.z-s.anc.z)>8){s.anc={x:s.pos.x,z:s.pos.z};s.ancT=0}else if((s.ancT+=dt)>30){s.anc=null;if(s.run)s.run.skiers--;s.run=null;s.state='walk';s.after=null;s.dest={x:BASE.x+(Math.random()-.5)*10,z:BASE.z-6};s.pos.set(BASE.x+(Math.random()-.5)*16,0,BASE.z-4);decide(s)}}
+  if(s.state==='carried')return;
+  if(s.state!=='queue'&&s.state!=='eat'&&s.state!=='leave'&&s.state!=='lift'&&s.state!=='patrol'&&s.state!=='carried'&&!(s.fallT>0)){if(!s.anc||Math.hypot(s.pos.x-s.anc.x,s.pos.z-s.anc.z)>8){s.anc={x:s.pos.x,z:s.pos.z};s.ancT=0}else if((s.ancT+=dt)>30){s.anc=null;if(s.run)s.run.skiers--;s.run=null;s.state='walk';s.after=null;s.dest={x:BASE.x+(Math.random()-.5)*10,z:BASE.z-6};s.pos.set(BASE.x+(Math.random()-.5)*16,0,BASE.z-4);decide(s)}}
   if(s.bub){s.bubT-=dt;if(s.bubT<=0){m.remove(s.bub);s.bub=null}}
   if(s.state==='walk'){
     const dx=s.dest.x-s.pos.x,dz=s.dest.z-s.pos.z,l=Math.hypot(dx,dz),sp=4.2*dt;
@@ -1123,6 +1147,7 @@ function endDay(){const sleepers=day.sleepers||0;buildings.forEach(b=>b.tonight=
   if(forecast==='thaw'&&!buildings.some(b=>b.type==='cannon'))tips.push('🌡️ Завтра оттепель: снежные пушки рядом с трассами спасут настроение гостей.');
   const th=Object.entries(day.thoughts).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([k,v])=>`${THOUGHTS[k][0]} ${THOUGHTS[k][1]} — ${v}`).join('<br>');
   $('dayCard').innerHTML=`<h2>Итоги дня ${dayN}</h2><p>Подъёмники закрыты, ратраки вышли на склон.</p>
+    ${day.carried?`<div class="r"><span>⛑️ Спасатели увезли на носилках</span><b>${day.carried}</b></div>`:''}
     ${sleepers?`<div class="r"><span>🛏 Пришли ночевать в шале и отели</span><b>${sleepers}</b></div>`:''}
     <div class="r"><span>Гостей</span><b>${day.visitors}${day.nightGuests?` <span style="color:var(--mut);font-weight:500">(🌙 ${day.nightGuests} ночью)</span>`:''}</b></div>
     <div class="r"><span>Ски-пассы</span><b class="pos">${fmt(day.tickets)}</b></div>
@@ -1617,7 +1642,7 @@ function spawnCar(dir){if(!ROAD.length||cars.length>=18)return;const g=new THREE
 function updCars(dt){for(let i=cars.length-1;i>=0;i--){const c=cars[i];c.d+=c.dir*c.v*dt;const end=c.dir<0?c.d<=0:c.d>=ROAD.len;
   const yaw=roadAt(c.d,c.dir<0?1:-1,c.g.position);c.g.rotation.y=yaw+(c.dir<0?Math.PI:0);if(end){scene.remove(c.g);cars.splice(i,1)}}}
 /* ================= ride mode v2: ski your own run ================= */
-const RSC=.6;// ride scale: rider metres -> world units
+const RSC=.5;// ride scale: rider metres -> world units
 // fine terrain patch that follows the rider so the slope looks smooth up close
 const FP_SIZE=150,FP_SEG=170;const fpGeo=new THREE.PlaneGeometry(FP_SIZE,FP_SIZE,FP_SEG,FP_SEG);fpGeo.rotateX(-Math.PI/2);
 fpGeo.setAttribute('color',new THREE.BufferAttribute(new Float32Array(fpGeo.attributes.position.count*3),3));
@@ -1703,7 +1728,7 @@ scene.add(camera);const SLN=60,slPos=new Float32Array(SLN*6),slG=new THREE.Buffe
 const slMat=new THREE.LineBasicMaterial({color:0xffffff,transparent:true,opacity:0,depthWrite:false});const streaks=new THREE.LineSegments(slG,slMat);streaks.frustumCulled=false;camera.add(streaks);
 function seedStreak(i,z){let x,y;do{x=(Math.random()-.5)*12;y=(Math.random()-.5)*7}while(Math.abs(x)<1.6&&Math.abs(y)<1.1);slPos[i*6]=slPos[i*6+3]=x;slPos[i*6+1]=slPos[i*6+4]=y;slPos[i*6+2]=z;slPos[i*6+5]=z-2}
 for(let i=0;i<SLN;i++)seedStreak(i,-2-Math.random()*40);
-function updStreaks(dt,sp){slMat.opacity=ride?clamp((sp-15)/16,0,.55):0;if(slMat.opacity<=0)return;for(let i=0;i<SLN;i++){slPos[i*6+2]+=sp*dt*1.6;slPos[i*6+5]=slPos[i*6+2]-1.2-sp*.08;if(slPos[i*6+2]>-1)seedStreak(i,-40)}slG.attributes.position.needsUpdate=true}
+function updStreaks(dt,sp){slMat.opacity=ride?clamp((sp-9)/14,0,.7):0;if(slMat.opacity<=0)return;for(let i=0;i<SLN;i++){slPos[i*6+2]+=sp*dt*2.6;slPos[i*6+5]=slPos[i*6+2]-1.2-sp*.08;if(slPos[i*6+2]>-1)seedStreak(i,-40)}slG.attributes.position.needsUpdate=true}
 // snow spray
 const sprayN=420,sprayPos=new Float32Array(sprayN*3),sprayV=[];for(let i=0;i<sprayN;i++)sprayV.push({x:0,y:-999,z:0,vx:0,vy:0,vz:0,t:1});
 const sprayG=new THREE.BufferGeometry();sprayG.setAttribute('position',new THREE.BufferAttribute(sprayPos,3));
@@ -1904,12 +1929,12 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
   const tyaw=sp>2.5?Math.atan2(r.vx,r.vz):r.f;let dy=tyaw-r.camYaw;while(dy>Math.PI)dy-=2*Math.PI;while(dy<-Math.PI)dy+=2*Math.PI;r.camYaw+=dy*Math.min(1,dt0*(fp?12:4));
   const cdx=Math.sin(fp?r.f:r.camYaw),cdz=Math.cos(fp?r.f:r.camYaw);
   if(fp){_hp.set(p.x+Math.sin(r.f)*.35,Math.max(p.y,meshH(p.x,p.z))+.47+(2.6-crouch*.45)*1.25,p.z+Math.cos(r.f)*.35);camera.position.copy(_hp);_look.set(p.x+cdx*12*RSC*2,p.y+.47+.3,p.z+cdz*12*RSC*2);camLook.copy(_look)}
-  else{const cr=r.crashT>0,back=camMode===1?15:cr?11:6.2,up=camMode===1?6.5:cr?5:2.7;_cam.set(p.x-cdx*back,0,p.z-cdz*back);_cam.y=Math.max(p.y+.47+up,meshH(_cam.x,_cam.z)+1.6);
+  else{const cr=r.crashT>0,spd=clamp(sp/30,0,1),back=camMode===1?15:cr?11:6.2-spd*1.4,up=camMode===1?6.5:cr?5:2.6-spd*.9;_cam.set(p.x-cdx*back,0,p.z-cdz*back);_cam.y=Math.max(p.y+.47+up,meshH(_cam.x,_cam.z)+1.6);
     camera.position.lerp(_cam,1-Math.exp(-dt0*7));_look.set(p.x+cdx*10,p.y+.47+1.4,p.z+cdz*10);camLook.lerp(_look,1-Math.exp(-dt0*12))}
   if(sp>24&&!fp){camera.position.x+=(Math.random()-.5)*(sp-24)*.012*RSC;camera.position.y+=(Math.random()-.5)*(sp-24)*.012*RSC}
   {const gy=meshH(camera.position.x,camera.position.z)+(fp?.9:1.4);if(camera.position.y<gy)camera.position.y=gy;if(!fp){const minY=rider.position.y+.9;if(camera.position.y<minY)camera.position.y=minY}}
   camera.lookAt(camLook);if(fp)camera.rotateZ(-r.lean*.35);
-  const fv=(innerWidth<innerHeight?66:52)+sp*.45;if(Math.abs(camera.fov-fv)>.3){camera.fov+=(fv-camera.fov)*.1;camera.updateProjectionMatrix()}
+  const fv=(innerWidth<innerHeight?66:52)+sp*.8;if(Math.abs(camera.fov-fv)>.3){camera.fov+=(fv-camera.fov)*.1;camera.updateProjectionMatrix()}
   updStreaks(dt0,sp);audioUpd(sp,skid);
   if(r.prof){let fr;if(r.R)fr=r.idx/(r.R.sm.length-1);else{const a=r.lift.b,tot=Math.hypot(a.x-BASE.x,a.z-BASE.z)||1;fr=clamp(1-Math.hypot(p.x-BASE.x,p.z-BASE.z)/tot,0,1)}
     const x=fr*200,y=4+(1-(clamp(p.y,r.prof.mn,r.prof.mx)-r.prof.mn)/((r.prof.mx-r.prof.mn)||1))*32;const d=$('rProfDot');d.setAttribute('cx',x.toFixed(1));d.setAttribute('cy',y.toFixed(1))}
