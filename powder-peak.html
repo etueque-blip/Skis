@@ -1066,7 +1066,7 @@ function endDay(){const sleepers=day.sleepers||0;buildings.forEach(b=>b.tonight=
   const nightFix=lifts.filter(L=>L.broken).length;lifts.forEach(L=>{L.queue.length=0;L.riders=0;if(L.broken){L.broken=false;if(L.warn){L.g.remove(L.warn);L.warn=null}}});runs.forEach(R=>R.skiers=0);renderAlert();
   let autoDaily=0;(daily||[]).forEach(d=>{if(d.done&&!d.claimed){d.claimed=true;autoDaily+=dailyReward()}});money+=autoDaily;
   if(questReady){/* keep the main quest prize waiting for the player */}
-  const occ=clamp(.35+rating()/5*.65,0,1);let night=0,bUp=0;buildings.forEach(b=>{const T=BT[b.type];if(T.night){const v=Math.round(T.night*occ);night+=v;b.earned+=v}bUp+=T.upkeep});
+  const occ=clamp(.35+rating()/5*.65,0,1);let night=0,bUp=0;buildings.forEach(b=>{const T=BT[b.type];if(T.night){const skiIn=runs.some(R=>{const e=R.sm[R.sm.length-1];return Math.hypot(e.x-b.x,e.z-b.z)<b.rad+16});const v=Math.round(T.night*occ*(skiIn?1.5:1));night+=v;b.earned+=v}bUp+=T.upkeep});
   money+=night-bUp;
   const profit=money-day.startMoney;
   const tips=[];
@@ -1199,6 +1199,7 @@ function endHint(p){
   if(d2(p,BASE)<BASE_LINK)return '<span class="okc">✓ конец у базы</span>';
   if(lifts.some(L=>d2(p,L.a)<LINK))return '<span class="okc">✓ конец у подъёмника</span>';
   if(runs.some(R=>d2(p,R.sm[0])<LINK))return '<span class="okc">✓ переходит в другую трассу</span>';
+  {const b=buildings.find(b=>(BT[b.type].guests||BT[b.type].food)&&Math.hypot(p.x-b.x,p.z-b.z)<b.rad+16);if(b)return `<span class="okc">✓ прямо к зданию «${BT[b.type].n}» — гости доедут на лыжах</span>`+(lifts.some(L=>d2(p,L.a)<LINK)||d2(p,BASE)<BASE_LINK?'':' <span class="wrn">(но обратно наверх подъёмника нет)</span>')}
   return '<span class="wrn">⚠ конец никуда не ведёт — гости застрянут</span>';
 }
 function refresh(){
@@ -1586,7 +1587,7 @@ function fineAt(cx,cz){fpC={x:cx,z:cz};const p=fpGeo.attributes.position,c=fpGeo
 function fineUpd(p){if(!fpC||Math.hypot(p.x-fpC.x,p.z-fpC.z)>28)fineAt(Math.round(p.x),Math.round(p.z))}
 const blobTex=(()=>{const cv=document.createElement('canvas');cv.width=cv.height=64;const g=cv.getContext('2d');const gr=g.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'rgba(20,30,60,.55)');gr.addColorStop(1,'rgba(20,30,60,0)');g.fillStyle=gr;g.fillRect(0,0,64,64);return new THREE.CanvasTexture(cv)})();
 const blob=new THREE.Mesh(new THREE.PlaneGeometry(2.6,2.6).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({map:blobTex,transparent:true,depthWrite:false,polygonOffset:true,polygonOffsetFactor:-10,polygonOffsetUnits:-10}));blob.renderOrder=4;blob.visible=false;scene.add(blob);
-const avG=new THREE.Group();avG.visible=false;scene.add(avG);const avS=[];for(let k=0;k<26;k++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:smokeTexAv(),transparent:true,depthWrite:false,opacity:.9}));avG.add(sp);avS.push(sp)}
+const avG=new THREE.Group();avG.visible=false;scene.add(avG);const AVN=40,avIM=new THREE.InstancedMesh(new THREE.IcosahedronGeometry(1,1),new THREE.MeshLambertMaterial({color:0xf4f7fc}),AVN);avIM.frustumCulled=false;avG.add(avIM);const avS=new Array(AVN).fill(0);
 function smokeTexAv(){if(!window._avT){const cv=document.createElement('canvas');cv.width=cv.height=64;const g=cv.getContext('2d');const gr=g.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(1,'rgba(240,245,255,0)');g.fillStyle=gr;g.fillRect(0,0,64,64);window._avT=new THREE.CanvasTexture(cv)}return window._avT}
 let ride=null;const keys={};let camMode=0,muted=false,gear='ski';try{gear=localStorage.getItem('powderpeak-gear')||'ski'}catch(e){}
 try{muted=localStorage.getItem('powderpeak-mute')==='1';camMode=+(localStorage.getItem('powderpeak-cam')||0)||0}catch(e){}
@@ -1669,15 +1670,16 @@ function emitSpray(p,vx,vy,vz){const q=sprayV.find(x=>x.t>=1);if(!q)return;const
 function updSpray(dt){for(let i=0;i<sprayN;i++){const q=sprayV[i];if(q.t<1){q.t+=dt/.7;q.vy-=(q.g||12)*dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.z+=q.vz*dt}sprayPos[i*3]=q.x;sprayPos[i*3+1]=q.t<1?q.y:-999;sprayPos[i*3+2]=q.z}sprayG.attributes.position.needsUpdate=true}
 // collisions
 let treeHash=null;
-const WIDE=15;let wideG=null,wideHidden=[];
+const WIDE=22;let wideG=null,wideHidden=[];
 function wideOn(R){wideOff();if(!R)return;wideG=new THREE.Group();const w=Math.max(WIDE,(R.w||3.9)+8);
-  wideG.add(ribbon(R.sm,w,0xffffff,.97,false,getPisteTex(R.diff)));R.g.visible=false;wideG.userData.R=R;
+  if(!R.free){wideG.add(ribbon(R.sm,w,0xffffff,.97,false,getPisteTex(R.diff)));R.g.visible=false;wideG.userData.R=R}
   // soft berms at the wide edge
   for(const sd of [-1,1]){const off=[];const sm=R.sm;for(let i=0;i<sm.length;i++){const a=sm[Math.max(0,i-1)],b=sm[Math.min(sm.length-1,i+1)];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;off.push({x:sm[i].x-tz*(w+.5)*sd,z:sm[i].z+tx*(w+.5)*sd,y:0})}const bm=ribbon(off,.6,0xf6f9ff,1,false,bermTex);bm.position.y=.06;wideG.add(bm)}
   scene.add(wideG);
   const w2=(w+2.5)**2;trees.forEach((t,i)=>{if(!t.on)return;for(let k=0;k<R.sm.length;k+=2){const q=R.sm[k],dx=t.x-q.x,dz=t.z-q.z;if(dx*dx+dz*dz<w2){t.on=false;setTree(i);wideHidden.push(i);break}}});
   ROCKS.forEach(r=>{if(!r.on)return;for(let k=0;k<R.sm.length;k+=2){const q=R.sm[k];if(Math.hypot(r.x-q.x,r.z-q.z)<w+2){r.on=false;r.wide=true;rockMesh.setMatrixAt(r.i,new THREE.Matrix4().makeScale(0,0,0));break}}});rockMesh.instanceMatrix.needsUpdate=true;
   if(wideHidden.length)treesChanged()}
+function freeLine(L){const a={x:L.b.x+L.dir.x*6,z:L.b.z+L.dir.z*6},sm=[];const n=Math.ceil(Math.hypot(BASE.x-a.x,BASE.z-a.z)/2);for(let k=0;k<=n;k++){const t=k/n,x=a.x+(BASE.x-a.x)*t,z=a.z+(BASE.z-a.z)*t;sm.push({x,z,y:heightAt(x,z)})}return{free:true,sm,w:10}}
 function wideOff(){if(wideG){scene.remove(wideG);if(wideG.userData.R)wideG.userData.R.g.visible=true;wideG=null}
   if(wideHidden.length){wideHidden.forEach(i=>{trees[i].on=true;setTree(i)});wideHidden=[];treesChanged()}
   let rr=false;ROCKS.forEach(r=>{if(r.wide){r.wide=false;r.on=true;rr=true;const s=.6+hash(r.i,13)*1.6;_m.makeRotationY(hash(r.i,14)*6);_m.scale(new THREE.Vector3(s,s*.7,s));_m.setPosition(r.x,heightAt(r.x,r.z)-.2,r.z);rockMesh.setMatrixAt(r.i,_m)}});if(rr)rockMesh.instanceMatrix.needsUpdate=true}
@@ -1735,7 +1737,7 @@ function startRide(R,opt){opt=opt||{};$('mRide').classList.remove('show');if(!R&
   speed=1;document.querySelectorAll('#speed button').forEach(x=>x.classList.toggle('on',x.dataset.s==='1'));
   {const kp=(()=>{try{return localStorage.getItem('powderpeak-keys')}catch(e){return null}})();if(kp!=='0'){$('ride').classList.remove('nokeys');clearTimeout(window._kT);window._kT=setTimeout(()=>{if(ride)$('ride').classList.add('nokeys')},10000)}}
   blob.visible=true;avG.visible=!R;if(!R){ride.av={gap:34,sp:9};rideMsg('🌊 Сзади сходит лавина — гони вниз!',2200)}
-  wideOn(R);finePatch.visible=HIQ;fpC=null;if(HIQ)fineUpd(ride.p);rider.scale.setScalar(1.25);ghost.scale.setScalar(1.25);camera.near=.2;camera.updateProjectionMatrix();setGear(rider,gear==='board');setGear(ghost,gear==='board');buildTreeHash();rider.visible=true;controls.enabled=false;document.body.classList.add('riding');$('ride').hidden=false;
+  if(R)wideOn(R);else wideOn(freeLine(opt.lift));buildTreeHash();finePatch.visible=HIQ;fpC=null;if(HIQ)fineUpd(ride.p);rider.scale.setScalar(1.25);ghost.scale.setScalar(1.25);camera.near=.2;camera.updateProjectionMatrix();setGear(rider,gear==='board');setGear(ghost,gear==='board');buildTreeHash();rider.visible=true;controls.enabled=false;document.body.classList.add('riding');$('ride').hidden=false;
   trI=0;trLast=null;trG.setDrawRange(0,0);
   const gh=ghosts[key];ghost.visible=!!(gh&&gh.length>3);
   $('rName').innerHTML=R?`<b style="color:${DIFF[R.diff].css};min-width:0;font-size:14px">${DIFF[R.diff].s} ${R.name}</b>`:`<b style="min-width:0;font-size:14px">🏔️ Фрирайд</b>`;
@@ -1844,7 +1846,7 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
   if(r.av&&r.cd<=0){const A=r.av;A.sp=Math.min(24,9+r.t*.28);A.gap=Math.min(48,A.gap+(sp-A.sp)*dt0);
     if(A.gap<1.5&&r.crashT<=0){crash(r,'🌊 Лавина догнала!');A.gap=30}
     const vd=sp>1?Math.atan2(r.vx,r.vz):r.f,bx=p.x-Math.sin(vd)*A.gap*RSC,bz=p.z-Math.cos(vd)*A.gap*RSC,lx=Math.cos(vd),lz=-Math.sin(vd);
-    avS.forEach((q,k)=>{const o=(k/(avS.length-1)-.5)*34,w=Math.sin(r.t*2+k)*1.5;const x=bx+lx*o-Math.sin(vd)*w,z=bz+lz*o-Math.cos(vd)*w;q.position.set(x,meshH(x,z)+2+Math.abs(Math.sin(r.t*3+k*1.7))*5,z);const sc=7+((k*37)%5)+Math.sin(r.t*4+k)*1.5;q.scale.set(sc,sc,1)});
+    if(isFinite(bx)&&isFinite(bz)){for(let k=0;k<AVN;k++){const o=(k/(AVN-1)-.5)*34,w=Math.sin(r.t*2+k)*1.5;const x=bx+lx*o-Math.sin(vd)*w,z=bz+lz*o-Math.cos(vd)*w;const sc=2.2+((k*37)%5)*.5+Math.sin(r.t*4+k)*.6;const y=meshH(x,z)+sc*.6+Math.abs(Math.sin(r.t*3+k*1.7))*2.5;const dc=Math.hypot(x-camera.position.x,y-camera.position.y,z-camera.position.z);const ss=dc<sc+5?0:sc;_m.makeScale(ss,ss*.8,ss);_m.setPosition(x,y,z);avIM.setMatrixAt(k,_m)}avIM.instanceMatrix.needsUpdate=true}
     if(Math.random()<.6)emitSpray({x:bx+(Math.random()-.5)*20,y:meshH(bx,bz),z:bz+(Math.random()-.5)*20},(Math.random()-.5)*8,4+Math.random()*6,(Math.random()-.5)*8);
     $('rGates').textContent=`🌊 ${Math.max(0,Math.round(A.gap))} м`;if(A.gap<12&&Math.random()<dt0*3)window.haptic&&window.haptic('light')}$('ride').classList.toggle('inair',!!(r.air&&r.trick));if(finePatch.visible)fineUpd(p);
   // rider pose
