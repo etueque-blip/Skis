@@ -811,16 +811,22 @@ function decorateLevel(B){if(B.deco){B.g.remove(B.deco);B.deco=null}const L=B.lv
   if(L>=4){const st=label('✦ '+lvlNames(B)[L-1]+' ✦','#fde047',.13);st.position.y=top+4.5;d.add(st);const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:0xffd36b,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));glow.scale.set(14,14,1);glow.position.y=top+1;d.add(glow);
   }
   if(L>=5){// pool with a deck, loungers and a steaming hot tub
-    const plot=new THREE.Mesh(new THREE.BoxGeometry(B.fw*kk+22,.18,B.fd*kk+14),mat(0xcbd5e1));plot.position.set(5,.09,0);d.add(plot);
-    for(const z of [-(hd+6.5),hd+6.5])d.add(box(B.fw*kk+20,.9,.9,0x166534,5,.5,z));
-    for(const [x,z] of [[-hw-1,-hd-6],[hw+14,-hd-6],[-hw-1,hd+6],[hw+14,hd+6]]){d.add(box(.2,2.2,.2,0x334155,x,1.1,z));const lg=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:0xffd27a,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));lg.scale.set(3,3,1);lg.position.set(x,2.3,z);d.add(lg)}
-    const deck=new THREE.Mesh(new THREE.BoxGeometry(11,.3,7),mat(0x9a6b45));deck.position.set(hw+6.5,.2,0);d.add(deck);
-    const pool=new THREE.Mesh(new THREE.BoxGeometry(8,.32,4.4),new THREE.MeshPhongMaterial({color:0x38bdf8,shininess:150,specular:0xffffff,emissive:0x0c4a6e}));pool.position.set(hw+6,.25,-.6);d.add(pool);
-    const tub=new THREE.Mesh(new THREE.CylinderGeometry(.9,.9,.4,16),new THREE.MeshPhongMaterial({color:0x7dd3fc,emissive:0x0e7490}));tub.position.set(hw+10.6,.35,2.3);d.add(tub);tub.userData.steam=1;
-    for(const z of [2.6,1.6,-2.8])d.add(box(1.8,.25,.7,0xf8fafc,hw+2.2,.5,z));
-    // helipad
-    const pad=new THREE.Mesh(new THREE.CylinderGeometry(3,3,.2,24),mat(0x374151));pad.position.set(-hw-4.5,.12,0);d.add(pad);const hh=label('H','#fde047',.06);hh.position.set(-hw-4.5,.5,0);d.add(hh);
-    B.heli={t:Math.random()*40,pad:new THREE.Vector3(-hw-4.5,.2,0)}}
+    const gy=(lx,lz)=>meshH(B.x+lx,B.z+lz)-B.y;
+    {const W=B.fw*kk+22,Dp=B.fd*kk+14,pg=new THREE.PlaneGeometry(W,Dp,16,12);pg.rotateX(-Math.PI/2);const P=pg.attributes.position;for(let k=0;k<P.count;k++){const x=P.getX(k)+5,z=P.getZ(k);P.setXYZ(k,x,gy(x,z)+.12,z)}pg.computeVertexNormals();
+     const plot=new THREE.Mesh(pg,new THREE.MeshLambertMaterial({color:0xd6dde6,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3}));plot.receiveShadow=true;d.add(plot)}
+    for(const z of [-(hd+6.5),hd+6.5])for(let x=-hw-5;x<=hw+15;x+=2){d.add(box(2.05,.9,.9,0x166534,x,gy(x,z)+.45,z))}
+    for(const [x,z] of [[-hw-1,-hd-6],[hw+14,-hd-6],[-hw-1,hd+6],[hw+14,hd+6]]){const y0=gy(x,z);d.add(box(.2,2.2,.2,0x334155,x,y0+1.1,z));const lg=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:0xffd27a,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));lg.scale.set(3,3,1);lg.position.set(x,y0+2.3,z);d.add(lg)}
+    // wooden deck on stilts, level with the house floor
+    const dx=hw+6.5,dW=11,dD=7;let dy=-1e9;for(const [a,b] of [[-1,-1],[1,-1],[-1,1],[1,1],[0,0]])dy=Math.max(dy,gy(dx+a*dW/2,b*dD/2));dy+=.35;
+    for(let k=0;k<7;k++)d.add(box(dW,.18,dD/7-.08,k%2?0x9a6b45:0x8a5a35,dx,dy,-dD/2+(k+.5)*dD/7));
+    for(const [a,b] of [[-1,-1],[1,-1],[-1,1],[1,1],[0,-1],[0,1]]){const lx=dx+a*(dW/2-.3),lz=b*(dD/2-.3),g0=gy(lx,lz),h=dy-g0+.2;if(h>.25)d.add(box(.3,h,.3,0x5b3a24,lx,g0+h/2-.1,lz))}
+    for(const sd of [-1,1])d.add(box(dW,.5,.12,0x5b3a24,dx,dy+.5,sd*dD/2));
+    const pool=new THREE.Mesh(new THREE.BoxGeometry(7,.3,4),new THREE.MeshPhongMaterial({color:0x38bdf8,shininess:150,specular:0xffffff,emissive:0x0c4a6e}));pool.position.set(dx-.6,dy+.12,-.6);d.add(pool);d.add(box(7.4,.22,.25,0xf1f5f9,dx-.6,dy+.15,-2.7),box(7.4,.22,.25,0xf1f5f9,dx-.6,dy+.15,1.5));
+    const tub=new THREE.Mesh(new THREE.CylinderGeometry(.9,.9,.5,16),new THREE.MeshPhongMaterial({color:0x7dd3fc,emissive:0x0e7490}));tub.position.set(dx+4,dy+.3,2.3);d.add(tub);d.add(new THREE.Mesh(new THREE.CylinderGeometry(1.05,1.05,.45,16),mat(0x5b3a24)).translateX(dx+4).translateY(dy+.2).translateZ(2.3));
+    B.steam=[dx+4,dy+.8,2.3];
+    for(const z of [2.4,1.4])d.add(box(1.8,.22,.65,0xf8fafc,dx-3.5,dy+.3,z),box(.6,.5,.65,0xf8fafc,dx-4.3,dy+.5,z));
+    const pad=new THREE.Mesh(new THREE.CylinderGeometry(3,3,.4,24),mat(0x374151));pad.position.set(-hw-4.5,gy(-hw-4.5,0)+.15,0);d.add(pad);const hh=label('H','#fde047',.06);hh.position.set(-hw-4.5,gy(-hw-4.5,0)+.6,0);d.add(hh);
+    B.heli={t:Math.random()*40,pad:new THREE.Vector3(-hw-4.5,gy(-hw-4.5,0)+.3,0)}}
   else B.heli=null;
   d.traverse(o=>{if(o.isMesh)o.castShadow=true});B.deco=d;B.g.add(d)}
 function makeHeli(){const g=new THREE.Group();g.add(box(1.6,1.3,3.2,0x1e293b,0,1,0),box(1.5,.8,1.4,0x7dd3fc,0,1.3,1.1),box(.3,.3,3,0x1e293b,0,1.1,-2.8),box(.08,.9,.6,0xfacc15,0,1.4,-4.2),box(.15,.15,2.2,0x94a3b8,-.7,.15,0),box(.15,.15,2.2,0x94a3b8,.7,.15,0));const rot=box(6,.05,.3,0x111827,0,1.85,0);g.add(rot);g.userData.rot=rot;g.traverse(o=>{if(o.isMesh)o.castShadow=true});scene.add(g);return g}
@@ -1629,7 +1635,7 @@ let snowSpeed=6,gust=0;
 const smokeTex=(()=>{const cv=document.createElement('canvas');cv.width=cv.height=64;const g=cv.getContext('2d');const gr=g.createRadialGradient(32,32,0,32,32,32);gr.addColorStop(0,'rgba(235,238,245,.9)');gr.addColorStop(1,'rgba(235,238,245,0)');g.fillStyle=gr;g.fillRect(0,0,64,64);return new THREE.CanvasTexture(cv)})();
 const smoke=[];for(let k=0;k<(HIQ?110:50);k++){const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:smokeTex,transparent:true,opacity:0,depthWrite:false}));sp.visible=false;scene.add(sp);smoke.push({sp,t:1})}
 let smokeAcc=0;const _cv=new THREE.Vector3();
-function chimneys(){const o=[];scene.children.forEach(c=>{if(c.userData&&c.userData.chimney&&c.visible){_cv.set(...c.userData.chimney);c.localToWorld(_cv);o.push(_cv.clone())}});buildings.forEach(B=>{const m=B.g.children[0];if(m&&m.userData.chimney){_cv.set(...m.userData.chimney);m.localToWorld(_cv);o.push(_cv.clone())}});return o}
+function chimneys(){const o=[];buildings.forEach(B=>{if(B.steam&&B.heli){_cv.set(...B.steam);B.g.localToWorld(_cv);o.push(_cv.clone())}});scene.children.forEach(c=>{if(c.userData&&c.userData.chimney&&c.visible){_cv.set(...c.userData.chimney);c.localToWorld(_cv);o.push(_cv.clone())}});buildings.forEach(B=>{const m=B.g.children[0];if(m&&m.userData.chimney){_cv.set(...m.userData.chimney);m.localToWorld(_cv);o.push(_cv.clone())}});return o}
 let chimCache=[],chimT=0;
 function updSmoke(dt){chimT-=dt;if(chimT<=0){chimT=1;chimCache=chimneys()}
   smokeAcc+=dt*chimCache.length*1.6;while(smokeAcc>=1){smokeAcc--;const p=smoke.find(x=>x.t>=1);if(!p)break;const c=chimCache[(Math.random()*chimCache.length)|0];p.t=0;p.sp.visible=true;p.sp.position.copy(c);p.v=.8+Math.random()*.5}
