@@ -60,6 +60,15 @@ body.riding #top,body.riding #bottom,body.riding #side,body.riding #miniWrap,bod
 #rTop b{font-size:18px;min-width:70px;text-align:right}#rSpd{color:#fde047}
 #rMsg{position:absolute;left:50%;top:30%;transform:translate(-50%,-50%);font-size:30px;font-weight:800;color:#fff;text-shadow:0 2px 14px #000a;pointer-events:none;text-align:center;opacity:0;transition:opacity .3s}
 #rMsg.show{opacity:1}
+#rTrick{position:absolute;right:max(18px,env(safe-area-inset-right,0px));top:calc(env(safe-area-inset-top,0px) + 120px);display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;opacity:0;transform:scale(.7);transition:opacity .25s,transform .35s cubic-bezier(.2,1.6,.4,1)}
+#rTrick.show{opacity:1;transform:scale(1)}
+#rBadge{width:92px;height:104px;display:grid;place-items:center;background:var(--bc,#e11d48);clip-path:polygon(50% 0,100% 14%,100% 58%,50% 100%,0 58%,0 14%);box-shadow:0 0 0 4px #fff inset;filter:drop-shadow(0 6px 18px #0007)}
+#rBadge span{color:#fff;font-weight:800;font-size:18px;letter-spacing:.5px;margin-top:-10px;text-shadow:0 2px 4px #0005}
+#rTrickN{font-weight:800;font-size:22px;color:#fff;text-shadow:0 2px 10px #000b;max-width:min(380px,70vw);text-align:center;line-height:1.15}
+#rTrickP{background:rgba(14,22,38,.75);color:#fff;border-radius:999px;padding:3px 12px;font-weight:800;font-size:15px}
+#rPts{position:absolute;right:max(12px,env(safe-area-inset-right,0px));top:calc(env(safe-area-inset-top,0px) + 62px);padding:4px 10px;display:flex;gap:6px;align-items:center;font-variant-numeric:tabular-nums}
+#rPts b{font-size:18px}#rPtsX{background:#e11d48;color:#fff;border-radius:999px;padding:0 7px;font-weight:800;font-size:13px}#rPtsX:empty{display:none}
+@media (max-width:640px){#rTrick{top:calc(env(safe-area-inset-top,0px) + 100px)}#rBadge{width:70px;height:80px}#rBadge span{font-size:14px}#rTrickN{font-size:17px}}
 .rpad{position:absolute;bottom:calc(env(safe-area-inset-bottom,0px) + 18px);display:flex;gap:12px}
 .rleft{left:max(16px,env(safe-area-inset-left,0px))}.rright{right:max(16px,env(safe-area-inset-right,0px));flex-direction:column;gap:8px;align-items:flex-end}
 .rb{width:84px;height:84px;border-radius:50%;background:rgba(14,22,38,.55);border:2px solid #ffffff55;color:#fff;font-size:30px;font-weight:800;touch-action:none;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
@@ -243,6 +252,7 @@ body.building #quest,body.building #info{display:none!important}
   </div>
 </div>
 
+<div class="modal" id="mMap"><div class="pn mcard" id="mapCard" style="width:min(760px,100%)"></div></div>
 <div class="modal" id="mIntro"><div class="pn mcard">
   <h2>🏔️ Powder Peak Tycoon</h2>
   <p>Ты купил дикую гору. Построй на ней лучший горнолыжный курорт в долине.</p>
@@ -267,6 +277,8 @@ body.building #quest,body.building #info{display:none!important}
 <div id="ride" hidden>
   <div class="pn" id="rTop"><span id="rName"></span><b id="rGates" style="min-width:0;font-size:15px"></b><b id="rScore" style="min-width:0;font-size:15px;color:#f9a8d4"></b><b id="rTime">0.0 с</b><b id="rSpd">0 км/ч</b><button class="btn" id="rReset" title="Вернуться на трассу (R)">↺</button><button class="btn" id="rCam" title="Камера (C)">🎥</button><button class="btn" id="rSnd" title="Звук (M)">🔊</button><button class="btn red" id="rExit">✕</button></div>
   <div id="rMsg"></div>
+  <div id="rTrick"><div id="rBadge"><span id="rBadgeT"></span></div><div id="rTrickN"></div><div id="rTrickP"></div></div>
+  <div class="pn" id="rPts"><b id="rPtsV">0</b><span id="rPtsX"></span></div>
   <div id="rThumb"><div id="rKnobBase"><div id="rKnob"></div></div><span>Веди пальцем влево-вправо</span></div>
   <div class="pn" id="rProf"><svg viewBox="0 0 200 40" preserveAspectRatio="none"><path id="rProfA"/><path id="rProfL"/><circle id="rProfDot" r="3.2"/></svg></div>
   <div class="rpad rleft"><button class="rb" id="rL" aria-label="Влево">◀</button><button class="rb" id="rR" aria-label="Вправо">▶</button></div>
@@ -300,6 +312,12 @@ const startMoney=n=>Math.round(60000*Math.pow(2.5,n-1)/1000)*1000;
 let save=null;
 try{save=JSON.parse(localStorage.getItem(SAVE_KEY)||'null')||(RESORT===1?JSON.parse(localStorage.getItem('powderpeak-v1')||'null'):null)}catch(e){}
 let seed=save&&save.seed||((Math.random()*1e6)|0);
+const MAPS={
+  alps:{n:'Альпы',i:'🏔️',d:'Классика: пологая долина, крутые вершины. Есть трассы любой сложности.',amp:150,pow:1.9,fr:.0075,det:12},
+  hills:{n:'Пологие холмы',i:'🌄',d:'Мягкие склоны, легко строить. Много зелёных и синих трасс.',amp:88,pow:1.35,fr:.0058,det:7},
+  peak:{n:'Высокий пик',i:'⛰️',d:'Огромный перепад и крутые кулуары. Для чёрных трасс и экспертов.',amp:215,pow:2.25,fr:.009,det:15},
+  dusk:{n:'Розовый закат',i:'🌅',d:'Широкие плавные склоны под тёплым закатным небом. Для красивых спусков.',amp:125,pow:1.6,fr:.0052,det:9,warm:1}};
+const MAP=MAPS[save&&save.map]||MAPS.alps,MAPK=Object.keys(MAPS).find(k=>MAPS[k]===MAP);
 
 /* ================= terrain ================= */
 function hash(i,j){let n=(Math.imul(i,374761393)+Math.imul(j,668265263)+Math.imul(seed,1442695))|0;n=Math.imul(n^(n>>>13),1274126177);n^=n>>>16;return (n>>>0)/4294967296}
@@ -312,10 +330,10 @@ const sstep=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
 const LAKE={x:-78,z:96,r:17};
 function rawHeight(x,z){
   const t=clamp((H-z)/S,0,1);
-  const m=Math.pow(t,1.9)*sstep(.02,.3,t);
+  const m=Math.pow(t,MAP.pow)*sstep(.02,.3,t);
   const lat=1-.35*Math.min(1,x*x/(H*H));
-  const r=rfbm(x*.0075+3.1,z*.0075+5.7);
-  return 150*m*lat*(.5+.7*r)+12*(fbm(x*.022,z*.022)-.5)*(.25+t)+2*(fbm(x*.07,z*.07,3)-.5)*t+2*fbm(x*.05,z*.05,2);
+  const r=rfbm(x*MAP.fr+3.1,z*MAP.fr+5.7);
+  return MAP.amp*m*lat*(.5+.7*r)+MAP.det*(fbm(x*.022,z*.022)-.5)*(.25+t)+2*(fbm(x*.07,z*.07,3)-.5)*t+2*fbm(x*.05,z*.05,2);
 }
 let LAKE_Y=0;
 function heightAt(x,z){
@@ -533,22 +551,23 @@ function liftCheck(a,b,type){
   if(vert<T.minVert)return{ok:false,msg:'Верхняя станция должна быть ВЫШЕ нижней'};
   if(blockedByBuilding(a,3)||blockedByBuilding(b,3))return{ok:false,msg:'Станция упирается в здание'};
   if(type==='tbar'){for(let t=.05;t<1;t+=.05){const x=a.x+(b.x-a.x)*t,z=a.z+(b.z-a.z)*t,x2=a.x+(b.x-a.x)*(t+.05),z2=a.z+(b.z-a.z)*(t+.05);if((heightAt(x2,z2)-heightAt(x,z))/(len*.05)>.6)return{ok:false,msg:'Для бугеля слишком круто: выбери гондолу или кресельный'}}}
-  else for(let t=.06;t<.95;t+=.02){const x=a.x+(b.x-a.x)*t,z=a.z+(b.z-a.z)*t,cy=a.y+T.cable+vert*t-Math.sin(Math.PI*t)*1.2;if(cy-heightAt(x,z)<(type==='gondola'?4:2.6))return{ok:false,msg:'Гора мешает тросу: поставь станцию в другом месте'}}
-  const cost=Math.round(T.cost(len,vert)/50)*50;
-  return{ok:true,len,vert,cost,cap:Math.round(3600/T.interval*(type==='gondola'?1:1))};
+  let cab=T.cable;if(type!=='tbar'){const need=type==='gondola'?4:2.6;let worst=0;for(let t=.06;t<.95;t+=.02){const x=a.x+(b.x-a.x)*t,z=a.z+(b.z-a.z)*t,cy=a.y+T.cable+vert*t-Math.sin(Math.PI*t)*1.2;worst=Math.max(worst,need-(cy-heightAt(x,z)))}
+    if(worst>0){cab=T.cable+Math.ceil(worst+.5);if(cab>T.cable+22)return{ok:false,msg:'Гора слишком мешает тросу: поставь верхнюю станцию левее или правее'}}}
+  const cost=Math.round((T.cost(len,vert)+(cab-T.cable)*len*4)/50)*50;
+  return{ok:true,cab,tall:cab>T.cable,len,vert,cost,cap:Math.round(3600/T.interval*(type==='gondola'?1:1))};
 }
 function cablePos(L,t,side,out){out.copy(L.ca).lerp(L.cb,t);out.addScaledVector(L.perp,(L.type==='gondola'?1.8:1.3)*side);out.y-=Math.sin(Math.PI*t)*1.2;return out}
 const LIFT_COLS=[0xdc2626,0x2563eb,0x16a34a,0xf59e0b,0x7c3aed,0x0891b2,0xdb2777,0x111827];
 function makeLift(a,b,type,name,col){
   type=type||'chair';const T=LT[type];
   const L={id:uid++,kind:'lift',type,name:name||`${T.n} «${freshWord(allNames())}»`,a:a.clone(),b:b.clone(),queue:[],load:0,riders:0,phase:0,speed:T.speed,interval:T.interval,g:new THREE.Group(),chairs:[],ridden:0,col:col!==undefined?col:LIFT_COLS[(Math.random()*LIFT_COLS.length)|0]};
-  L.cost=liftCheck(a,b,type).cost||0;
+  const LC=liftCheck(a,b,type);L.cost=LC.cost||0;L.cab=LC.cab||T.cable;
   L.len=Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z);
   const dir=new THREE.Vector3(b.x-a.x,0,b.z-a.z).normalize(),perp=new THREE.Vector3(-dir.z,0,dir.x);L.dir=dir;L.perp=perp;
-  L.ca=a.clone().add(new THREE.Vector3(0,T.cable,0));L.cb=b.clone().add(new THREE.Vector3(0,T.cable,0));
+  L.ca=a.clone().add(new THREE.Vector3(0,L.cab,0));L.cb=b.clone().add(new THREE.Vector3(0,L.cab,0));
   const ang=Math.atan2(dir.x,dir.z);
   [a,b].forEach(p=>{
-    const sh=type==='tbar'?3:T.cable-1;
+    const sh=type==='tbar'?3:T.cable-1,ext=L.cab-T.cable;if(ext>0)L.g.add(box(.9,ext+.4,.9,0x94a3b8,p.x,p.y+sh+ext/2,p.z));
     const W=type==='gondola'?7:5,D=type==='gondola'?6:4,sg=new THREE.Group();sg.position.set(p.x,p.y-.3,p.z);sg.rotation.y=ang;
     sg.add(box(W,sh*.45,D,0xe5e7eb,0,sh*.225,0),box(W,sh*.55,D*.92,L.col,0,sh*.45+sh*.275,0),box(W*.98,sh*.3,D*.94,0x1e293b,0,sh*.66,0),box(W+1,.5,D+1.2,0x1f2937,0,sh+.2,0),box(W+.6,.3,D+.8,L.col,0,sh+.55,0));
     const bw=new THREE.Mesh(new THREE.CylinderGeometry(1.6,1.6,.3,20),mat(0x9ca3af));bw.position.set(0,sh+.95,0);sg.add(bw);L.g.add(sg)});
@@ -572,7 +591,7 @@ function makeLift(a,b,type,name,col){
     defs=[[seatG,mat(L.col)],[frameG,mat(0x334155)],[bubG,new THREE.MeshPhongMaterial({color:L.col,transparent:true,opacity:.38,shininess:90,specular:0xffffff,depthWrite:false,side:THREE.DoubleSide})]]}
   L.nch=Math.max(2,nc*2);L.cparts=defs.map(([g,m])=>{const im=new THREE.InstancedMesh(g,m,L.nch);im.frustumCulled=false;im.castShadow=true;L.g.add(im);return im});
   L.g.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh)o.castShadow=true});
-  L.lbl=label(T.icon+' '+L.name);L.lbl.position.set(b.x,b.y+T.cable+5,b.z);L.g.add(L.lbl);
+  L.lbl=label(T.icon+' '+L.name);L.lbl.position.set(b.x,b.y+L.cab+5,b.z);L.g.add(L.lbl);
   scene.add(L.g);clearTrees(sampleLine(a,b),type==='gondola'?4:3.2);lifts.push(L);return L;
 }
 function sampleLine(a,b){const n=Math.ceil(d2(a,b)),o=[];for(let k=0;k<=n;k++){const t=k/n;o.push({x:a.x+(b.x-a.x)*t,z:a.z+(b.z-a.z)*t})}return o}
@@ -601,7 +620,9 @@ function runCheck(sm){
   if(sm.some(onLake))return{...r,ok:false,msg:'Трасса не может идти по озеру'};
   if(sm.some(p=>buildings.some(b=>Math.hypot(p.x-b.x,p.z-b.z)<b.rad)))return{...r,ok:false,msg:'Трасса проходит через здание'};
   if(len<25)return{...r,ok:false,msg:'Слишком короткая трасса'};
-  if(minG<-.04||vert<5)return{...r,ok:false,msg:'Трасса идёт В ГОРУ на красном участке: веди точки только вниз'};
+  r.upFlat=minG<-.04;
+  if(vert<4)return{...r,ok:false,msg:'Трасса почти ровная: закончи её ниже по склону'};
+  if(minG<-.14)return{...r,ok:false,fix:true,msg:'Есть подъём в гору (красный кусок). Нажми 🪄 Исправить или передвинь точку'};
   return r;
 }
 function gradeColor(g){return g<-.04?0xf43f5e:g<.27?0x22c55e:g<.45?0x2f7cf6:g<.7?0x111827:0x581c87}
@@ -634,10 +655,10 @@ function lampSet(pos,parent){// pos: [{x,z}]
   pos.forEach((p,k)=>{const y=heightAt(p.x,p.z);_m.makeTranslation(p.x,y,p.z);post.setMatrixAt(k,_m);head.setMatrixAt(k,_m);_m.makeTranslation(p.x,y+.7,p.z);pool.setMatrixAt(k,_m);gp.push(p.x,y+6.1,p.z)});
   post.castShadow=true;pool.renderOrder=4;const pts=new THREE.Points(new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute(gp,3)),lampGlowMat);pts.renderOrder=7;parent.add(post,head,pool,pts)}
 function edgePoints(sm,every,off,both){const o=[];for(let i=Math.floor(every/2);i<sm.length-1;i+=every){const a=sm[i-1]||sm[i],b=sm[i+1];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const sg=both?((i/every|0)%2?1:-1):1;o.push({x:sm[i].x-tz*off*sg,z:sm[i].z+tx*off*sg,tx,tz,sg})}return o}
-function addLamps(R){lampSet(edgePoints(R.sm,10,5.2,true),R.g)}
+function addLamps(R){lampSet(edgePoints(R.sm,10,(R.w||3.9)+1.3,true),R.g)}
 const sprays=[];
 const cannonG=(()=>{const g=new THREE.CylinderGeometry(.55,.4,1.8,8);g.rotateX(1.2);g.translate(0,3.3,0);return g})(),cannonPole=new THREE.CylinderGeometry(.14,.18,3,5);cannonPole.translate(0,1.5,0);
-function addCannons(R){const pts=edgePoints(R.sm,22,5.6,false),n=pts.length;if(!n)return;
+function addCannons(R){const pts=edgePoints(R.sm,22,(R.w||3.9)+1.7,false),n=pts.length;if(!n)return;
   const barrel=new THREE.InstancedMesh(cannonG,mat(0xfacc15),n),pole=new THREE.InstancedMesh(cannonPole,mat(0x475569),n);const N=n*16,pos=new Float32Array(N*3),meta=[];
   pts.forEach((p,k)=>{const y=heightAt(p.x,p.z);const yaw=Math.atan2(p.tz*p.sg,-p.tx*p.sg)*0+Math.atan2(-p.tz,p.tx);_m.makeRotationY(Math.atan2(p.tz*p.sg,-p.tx*p.sg));_m.setPosition(p.x,y,p.z);barrel.setMatrixAt(k,_m);pole.setMatrixAt(k,_m);
     for(let q=0;q<16;q++)meta.push({x:p.x,y:y+3.6,z:p.z,dx:p.tz*p.sg,dz:-p.tx*p.sg,ph:Math.random(),sp:(Math.random()-.5)*.5})});
@@ -648,17 +669,17 @@ function updSprays(dt){const on=isNight()||weather==='thaw'||weather==='cloud';f
 function buyRunUpgrade(R,kind){const c=kind==='lit'?lampCost(R):snowCost(R);if(money<c)return toast('Не хватает денег',1);money-=c;day.build+=c;day.builtN++;addXP(15);
   if(kind==='lit'){R.lit=true;addLamps(R);toast('💡 Фонари горят! Теперь на трассе катаются до 21:00')}else{R.snow=true;addCannons(R);toast('❄️ Снежные пушки стоят: оттепель трассе не страшна')}
   burst(R.sm[(R.sm.length/2)|0],'-'+fmt(c));showInfo(R);persist();checkQuest()}
-function makeRun(pts,name){
+function makeRun(pts,name,w){w=w||3.9;
   const sm=curveSamples(pts),info=runCheck(sm);
-  const R={id:uid++,kind:'run',name:name||`Трасса «${freshWord(allNames())}»`,pts:pts.map(p=>({x:p.x,z:p.z})),sm,...info,g:new THREE.Group(),skiers:0,ridden:0,falls:0};
+  const R={id:uid++,kind:'run',name:name||`Трасса «${freshWord(allNames())}»`,pts:pts.map(p=>({x:p.x,z:p.z})),sm,...info,w,g:new THREE.Group(),skiers:0,ridden:0,falls:0};
   R.step=R.len/(sm.length-1);
   const d=DIFF[R.diff];
-  R.g.add(ribbon(sm,3.9,0xffffff,.97,false,getPisteTex(R.diff)));
+  R.g.add(ribbon(sm,w,0xffffff,.97,false,getPisteTex(R.diff)));
   {const np=Math.floor(sm.length/12)*2,pg=new THREE.CylinderGeometry(.13,.13,2.2,5);pg.translate(0,1.1,0);const pm=new THREE.InstancedMesh(pg,mat(R.diff===0?0x16a34a:R.diff===1?0x2563eb:0x111827),Math.max(1,np));let k=0;
-   for(let i=6;i<sm.length-1&&k<np;i+=12){const a=sm[i-1],b=sm[i+1];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;for(const sg of [1,-1]){const x=sm[i].x-tz*4.3*sg,z=sm[i].z+tx*4.3*sg;_m.makeTranslation(x,heightAt(x,z),z);pm.setMatrixAt(k++,_m)}}
+   for(let i=6;i<sm.length-1&&k<np;i+=12){const a=sm[i-1],b=sm[i+1];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;for(const sg of [1,-1]){const x=sm[i].x-tz*(w+.4)*sg,z=sm[i].z+tx*(w+.4)*sg;_m.makeTranslation(x,heightAt(x,z),z);pm.setMatrixAt(k++,_m)}}
    pm.count=k;pm.castShadow=true;R.g.add(pm)}
   R.lbl=label(d.s+' '+R.name,d.css);R.lbl.position.set(sm[0].x,sm[0].y+6,sm[0].z);R.g.add(R.lbl);
-  scene.add(R.g);clearTrees(sm,5.2);clearRocks(sm,5.5);runs.push(R);return R;
+  scene.add(R.g);clearTrees(sm,w+1.3);clearRocks(sm,w+1.6);runs.push(R);return R;
 }
 
 /* ================= buildings ================= */
@@ -890,7 +911,7 @@ function updateLift(L,dt){
 /* ================= economy, time, quests ================= */
 const WEATHER={sun:{n:'Солнечно',i:'☀️',mult:1,snow:.12,fog:1,sunI:1,cloud:0,happy:1},powder:{n:'Свежий снег',i:'🌨️',mult:1.35,snow:1,fog:.72,sunI:.72,cloud:.45,happy:5},cloud:{n:'Облачно',i:'☁️',mult:.95,snow:.3,fog:.82,sunI:.62,cloud:.6},thaw:{n:'Оттепель',i:'🌡️',mult:.75,snow:0,fog:.95,sunI:1.05,cloud:.15},storm:{n:'Метель',i:'🌬️',mult:.55,snow:1.8,fog:.42,sunI:.38,cloud:1,happy:-4}};
 const WDESC={sun:'обычный день',powder:'гостей больше на треть, все довольны',cloud:'чуть меньше гостей',thaw:'снег раскисает: снежные пушки спасают трассы',storm:'гостей мало, кресельные и бугели едут медленно'};
-function rollWeather(){const r=Math.random();return r<.34?'sun':r<.55?'powder':r<.75?'cloud':r<.88?'thaw':'storm'}
+function rollWeather(){const r=Math.random();return r<.3?'sun':r<.56?'powder':r<.76?'cloud':r<.88?'thaw':'storm'}
 let weather=save&&save.weather||'sun',forecast=save&&save.forecast||rollWeather();
 const liftSpeed=L=>L.broken?0:L.speed*(weather==='storm'&&L.type!=='gondola'?.6:1);
 function cannonCovers(R){return R.snow||buildings.some(b=>b.type==='cannon'&&R.sm.some((p,i)=>i%4===0&&Math.hypot(p.x-b.x,p.z-b.z)<50))}
@@ -1039,8 +1060,8 @@ const starStr=()=>{const r=Math.round(rating()*2)/2;let s='';for(let i=1;i<=5;i+
 /* ================= persistence ================= */
 function persist(dayOverride){
   try{const cut=[];for(let i=0;i<BASE_TREES;i++)if(!trees[i].on)cut.push(i);const rocksOff=ROCKS.filter(r=>!r.on).map(r=>r.i);
-    localStorage.setItem(SAVE_KEY,JSON.stringify({v:2,seed,money:Math.round(money),price,day:dayOverride||dayN,rocksOff,ratingHist,quest:questI,xp,rideDone,best,owned:[...owned],qReady:questReady,daily,dailyDay:dayN,gift1m:giftGiven,weather,forecast,
-    lifts:lifts.map(L=>({n:L.name,t:L.type,c:L.col,a:[L.a.x,L.a.z],b:[L.b.x,L.b.z]})),runs:runs.map(R=>({n:R.name,p:R.pts.map(p=>[p.x,p.z]),l:R.lit?1:0,s:R.snow?1:0})),
+    localStorage.setItem(SAVE_KEY,JSON.stringify({v:2,seed,money:Math.round(money),price,day:dayOverride||dayN,rocksOff,map:MAPK,ratingHist,quest:questI,xp,rideDone,best,owned:[...owned],qReady:questReady,daily,dailyDay:dayN,gift1m:giftGiven,weather,forecast,
+    lifts:lifts.map(L=>({n:L.name,t:L.type,c:L.col,a:[L.a.x,L.a.z],b:[L.b.x,L.b.z]})),runs:runs.map(R=>({n:R.name,w:R.w,p:R.pts.map(p=>[p.x,p.z]),l:R.lit?1:0,s:R.snow?1:0})),
     blds:buildings.map(b=>({t:b.type,x:b.x,z:b.z,r:b.rot})),cut,planted:trees.slice(BASE_TREES).filter(t=>t.on).map(t=>[+t.x.toFixed(1),+t.z.toFixed(1)])}))}catch(e){}
 }
 function addTree(x,z){if(trees.length>=TREE_CAP)return false;const i=trees.length;trees.push({x,z,y:heightAt(x,z),s:.7+Math.random()*.6,on:true});setTree(i);colorTree(i);return true}
@@ -1049,7 +1070,7 @@ if(save){
   (save.planted||[]).forEach(p=>addTree(p[0],p[1]));treesChanged();
   (save.blds||[]).forEach(b=>makeBuilding(b.t,b.x,b.z,b.r,true));
   (save.lifts||[]).forEach(l=>makeLift(new THREE.Vector3(l.a[0],heightAt(l.a[0],l.a[1]),l.a[1]),new THREE.Vector3(l.b[0],heightAt(l.b[0],l.b[1]),l.b[1]),l.t||'chair',l.n,l.c));
-  (save.runs||[]).forEach(r=>{const R=makeRun(r.p.map(p=>({x:p[0],z:p[1]})),r.n);if(r.l){R.lit=true;addLamps(R)}if(r.s){R.snow=true;addCannons(R)}});
+  (save.runs||[]).forEach(r=>{const R=makeRun(r.p.map(p=>({x:p[0],z:p[1]})),r.n,r.w);if(r.l){R.lit=true;addLamps(R)}if(r.s){R.snow=true;addCannons(R)}});
 }
 if(!daily)daily=genDaily();
 const GIFT=0;
@@ -1079,14 +1100,14 @@ function nearest(p){
 }
 
 /* ================= tools & UI ================= */
-let selLand=null,pickerOpen=false,tool='look',liftType='chair',bType=null,bRot=0,treeMode='rock',liftA=null,runPts=[],hover=null,ghostAt=null,selDel=null;
+let drawMode=true,editRun=null,dragI=-1,drawing=null,selLand=null,pickerOpen=false,tool='look',liftType='chair',bType=null,bRot=0,treeMode='rock',liftA=null,runPts=[],hover=null,ghostAt=null,selDel=null;
 const prev=new THREE.Group();scene.add(prev);
 const markerG=new THREE.CylinderGeometry(.9,.9,3,10);markerG.translate(0,1.5,0);
 function clearPrev(){while(prev.children.length){const c=prev.children[0];prev.remove(c);c.traverse&&c.traverse(o=>{if(o.geometry&&o.geometry!==markerG&&!o.isSprite)o.geometry.dispose()})}}
 function marker(p,c){const m=new THREE.Mesh(markerG,new THREE.MeshBasicMaterial({color:c}));m.position.copy(p);prev.add(m)}
 const TOOLS={
   lift:{icon:'🚡',t:'Подъёмник',steps:['Выбери тип подъёмника в списке сверху','Нажми, где будет НИЖНЯЯ станция (лучше в жёлтом круге у базы)','Нажми выше по горе, где будет ВЕРХНЯЯ станция']},
-  run:{icon:'⛷️',t:'Трасса',steps:['Нажми у верхней станции подъёмника (синий круг)','Ставь точки вниз по склону (цвет = крутизна, красный = в гору)','Закончи в жёлтом круге и нажми «Построить»']},
+  run:{icon:'⛷️',t:'Трасса',steps:['Веди пальцем от верхней станции вниз — трасса нарисуется. Или нажимай точки (кнопка ✏️/👆)','Неудачное место? Перетащи белую точку пальцем — поправится только этот кусок','Закончи в жёлтом круге и нажми «Построить»']},
   build:{icon:'🏠',t:'Здания',steps:['Выбери здание в списке сверху','Нажми на ровное место (на карте «Крутизна» — зелёное)','Поверни, если нужно, и нажми «Построить»']},
   trees:{icon:'🌲',t:'Природа',steps:['Выбери: убрать камни, вырубить или посадить лес','Нажимай на склон: кисть радиусом ~60 м']},
   ride:{icon:'⛷️',t:'Кататься',steps:['Выбери трассу (со слалом-воротами) или фрирайд с вершины подъёмника','Управление: ← → поворот, ↑ разгон, ↓ тормоз, пробел прыжок, C камера (на телефоне — кнопки на экране)']},
@@ -1112,7 +1133,7 @@ function renderPicker(){
   p.classList.toggle('show',items.length>0&&pickerOpen);$('cPick').hidden=!(items.length>0)||pickerOpen;p.innerHTML='';
   items.forEach(x=>{const e=document.createElement('button');e.className='pk'+(x.on?' on':'')+(x.lock?' lock':'');e.innerHTML=`<span class="i">${x.i}</span><b>${x.n}</b><span class="c">${x.c}</span><span class="d">${x.d}</span>`;e.onclick=x.f;p.appendChild(e)});
 }
-function setTool(t){
+function setTool(t){if(editRun&&t!=='run'){editRun.g.visible=true;editRun=null}
   if(t==='price'){$('price').classList.toggle('show');updatePrice();return}
   if(t==='ride'&&!runs.length&&!lifts.length){toast('Сначала построй подъёмник и трассу — потом сможешь прокатиться',1);return}
   tool=t;liftA=null;runPts=[];hover=null;ghostAt=null;selDel=null;bType=t==='build'?bType:null;hideInfo();
@@ -1136,7 +1157,7 @@ function refresh(){
     let stat='';
     const b=hover||null;
     if(!liftA){stat=''}
-    else if(b){const c=liftCheck(liftA,b,liftType);stat=c.ok?`📏 ${M(c.len)} м · ⬆ ${M(c.vert)} м · 👥 ${c.cap}/час · <b class="${money>=c.cost?'okc':'bad'}">${fmt(c.cost)}</b>`:`<span class="bad">✕ ${c.msg}</span>`}
+    else if(b){const c=liftCheck(liftA,b,liftType);stat=c.ok?`📏 ${M(c.len)} м · ⬆ ${M(c.vert)} м · 👥 ${c.cap}/час · <b class="${money>=c.cost?'okc':'bad'}">${fmt(c.cost)}</b>${c.tall?' · <span class="wrn">опоры выше, чтобы трос прошёл над горой</span>':''}`:`<span class="bad">✕ ${c.msg}</span>`}
     else stat=d2(liftA,BASE)<BASE_LINK?'<span class="okc">✓ Нижняя станция у базы — гости смогут прийти</span>':'<span class="wrn">ℹ Не у базы: сюда должна вести какая-то трасса</span>';
     renderCard(stat,liftA?[{l:'↶ Заново',f:()=>{liftA=null;hover=null;refresh()}}]:[]);
   }else if(tool==='run'){
@@ -1146,9 +1167,14 @@ function refresh(){
       const startOk=lifts.some(L=>d2(runPts[0],L.b)<LINK)||runs.some(R=>d2(runPts[0],R.sm[R.sm.length-1])<LINK)||d2(runPts[0],BASE)<BASE_LINK;
       stat=startOk?'<span class="okc">✓ старт у подъёмника</span>':'<span class="wrn">⚠ старт не у подъёмника — сюда никто не приедет</span>';
       if(runPts.length>=2){const d=DIFF[c.diff];stat+=' · '+endHint(runPts[runPts.length-1])+'<br>'+(c.ok?`<b style="color:${d.css}">${d.s} ${d.n}</b> · ${M(c.len)} м · ↓${M(c.vert)} м · <b class="${money>=c.cost?'okc':'bad'}">${fmt(c.cost)}</b>`:`<span class="bad">✕ ${c.msg}</span>`)}
-      btns.push({l:'↶ Убрать точку',f:()=>{runPts.pop();refresh()}},{l:runPts.length>=2&&c.ok?`Построить ${fmt(c.cost)}`:'Построить',c:'pri',dis:!(runPts.length>=2&&c.ok&&money>=c.cost),f:buildRun});
+      const price=editRun?Math.max(0,c.cost-editRun.cost):c.cost;
+      if(c.ok&&c.upFlat)stat+='<br><span class="wrn">ℹ есть пологий кусок — проедут с разгона</span>';
+      btns.push({l:'↶ Точка',f:()=>{runPts.pop();refresh()}});if(c.fix)btns.push({l:'🪄 Исправить',f:fixRun});
+      btns.push({l:'🗑',f:()=>{runPts=[];refresh()}},{l:runPts.length>=2&&c.ok?`${editRun?'Сохранить':'Построить'} ${fmt(price)}`:'Построить',c:'pri',dis:!(runPts.length>=2&&c.ok&&money>=price),f:buildRun});
     }
-    renderCard(stat,btns);
+    btns.unshift({l:drawMode?'✏️ Рисую':'👆 Точки',f:()=>{drawMode=!drawMode;toast(drawMode?'✏️ Веди пальцем по склону — трасса рисуется':'👆 Нажимай точки по одной');refresh()}});
+    if(editRun)btns.push({l:'Отмена',f:()=>{setTool('look')}});
+    renderCard(stat||(drawMode?'✏️ Проведи пальцем от верхней станции вниз':''),btns);
   }else if(tool==='build'){
     let stat='',btns=[];
     if(bType&&ghostAt){const c=bCheck(bType,ghostAt.x,ghostAt.z,bRot);stat=c.ok?`<span class="okc">✓ Место подходит</span>${c.cut?` · вырубим ${c.cut} дер.`:''} · <b class="${money>=c.cost?'okc':'bad'}">${fmt(c.cost)}</b>`:`<span class="bad">✕ ${c.msg}</span>`;
@@ -1167,7 +1193,8 @@ function refresh(){
 function drawPreview(){
   clearPrev();
   if(tool==='lift'&&liftA){marker(liftA,0x38bdf8);if(hover){const c=liftCheck(liftA,hover,liftType),h=LT[liftType].cable;const g=new THREE.BufferGeometry().setFromPoints([liftA.clone().setY(liftA.y+h),hover.clone().setY(hover.y+h)]);prev.add(new THREE.Line(g,new THREE.LineBasicMaterial({color:c.ok?0x22c55e:0xf43f5e})));marker(hover,c.ok?0x22c55e:0xf43f5e)}}
-  if(tool==='run'&&runPts.length){runPts.forEach((p,i)=>marker(p,i===0?0x38bdf8:0xffffff));const pts=hover?runPts.concat([hover]):runPts;const sm=curveSamples(pts);
+  if(tool==='run'&&editRun)prev.add(ribbon(editRun.sm,editRun.w||3.9,0x94a3b8,.25));
+  if(tool==='run'&&runPts.length){runPts.forEach((p,i)=>{marker(p,i===0?0x38bdf8:i===runPts.length-1?0xfbbf24:0xffffff);const rr=addRing(p,3.2,i===dragI?0xfacc15:0xffffff,.9);rings.remove(rr);prev.add(rr)});const pts=hover?runPts.concat([hover]):runPts;const sm=curveSamples(pts);
     if(sm.length>1)prev.add(ribbon(sm,3.6,0xffffff,.75,true))}
   if(tool==='build'&&bType&&(ghostAt||hover)){const p=ghostAt||hover,c=bCheck(bType,p.x,p.z,bRot),f=bFoot(bType,bRot);
     const g=bModel(bType);g.rotation.y=bRot*Math.PI/2;g.traverse(o=>{if(o.isMesh){o.material=new THREE.MeshBasicMaterial({color:c.ok?0x4ade80:0xf43f5e,transparent:true,opacity:.55,depthWrite:false})}});
@@ -1200,11 +1227,11 @@ function showInfo(o,live){
     h=`<h3><span style="color:${d.css}">${d.s} ${o.name}</span><button class="x" id="iX">✕</button></h3>
     <div class="r"><span>Сложность</span><b style="color:${d.css}">${d.n}</b></div><div class="r"><span>Длина</span><b>${M(o.len)} м</b></div>
     <div class="r"><span>Перепад</span><b>${M(o.vert)} м</b></div><div class="r"><span>Макс. крутизна</span><b>${Math.round(Math.atan(o.maxG)*180/Math.PI)}°</b></div>
-    <div class="r"><span>Сейчас на трассе</span><b>${o.skiers}</b></div><div class="r"><span>Спусков всего</span><b>${o.ridden}</b></div><div class="r"><span>Падений</span><b>${o.falls}</b></div><div class="r"><span>Освещение</span><b>${o.lit?'💡 есть':'нет'}</b></div><div class="r"><span>Оснежение</span><b>${o.snow?'❄️ есть':'нет'}</b></div>`;
+    <div class="r"><span>Сейчас на трассе</span><b>${o.skiers}</b></div><div class="r"><span>Спусков всего</span><b>${o.ridden}</b></div><div class="r"><span>Падений</span><b>${o.falls}</b></div><div class="r"><span>Ширина</span><b>${M((o.w||3.9)*2)} м</b></div><div class="r"><span>Освещение</span><b>${o.lit?'💡 есть':'нет'}</b></div><div class="r"><span>Оснежение</span><b>${o.snow?'❄️ есть':'нет'}</b></div>`;
     if(live){$('iStats').innerHTML=h.replace(/^<h3>.*?<\/h3>/s,'');return}
     h=h.replace(/(<\/h3>)([\s\S]*)$/,'$1<div id="iStats">$2</div>');
-    const lc=lampCost(o),sc=snowCost(o);
-    h+=`<div class="cb"><button class="btn pri" id="iRide">⛷️ Прокатиться${best[o.name]?` · 🏆 ${best[o.name].toFixed(1)} с`:''}</button></div><div class="cb">${o.lit?'':`<button class="btn pri" id="iLamp" ${money>=lc?'':'disabled'}>💡 Фонари ${fmt(lc)}</button>`}${o.snow?'':`<button class="btn" id="iSnow" ${money>=sc?'':'disabled'}>❄️ Оснежение ${fmt(sc)}</button>`}</div>`;
+    const lc=lampCost(o),sc=snowCost(o),wc=widenCost(o);
+    h+=`<div class="cb"><button class="btn" id="iEdit">✏️ Изменить</button>${o.w<8.4?`<button class="btn" id="iWide" ${money>=wc?'':'disabled'}>↔ Шире ${fmt(wc)}</button>`:''}</div><div class="cb"><button class="btn pri" id="iRide">⛷️ Прокатиться${best[o.name]?` · 🏆 ${best[o.name].toFixed(1)} с`:''}</button></div><div class="cb">${o.lit?'':`<button class="btn pri" id="iLamp" ${money>=lc?'':'disabled'}>💡 Фонари ${fmt(lc)}</button>`}${o.snow?'':`<button class="btn" id="iSnow" ${money>=sc?'':'disabled'}>❄️ Оснежение ${fmt(sc)}</button>`}</div>`;
     if(!o.lit||!o.snow)h+=`<div class="r" style="display:block;line-height:1.35;margin-top:4px"><span>${o.lit?'':'💡 Фонари: на трассе катаются ночью, курорт открыт до 21:00. '}${o.snow?'':'❄️ Пушки: в оттепель трасса не раскисает.'}</span></div>`;
   }else{const T=BT[o.type];
     h=`<h3>${T.icon} ${T.n}<button class="x" id="iX">✕</button></h3><div class="r" style="display:block;line-height:1.35"><span>${T.desc}</span></div>
@@ -1214,7 +1241,7 @@ function showInfo(o,live){
   }
   h+=`<div class="cb"><button class="btn red" id="iDel">🧨 Снести</button></div>`;
   el.innerHTML=h;$('iX').onclick=hideInfo;$('iDel').onclick=()=>{setTool('del');selDel=o;refresh()};
-  if($('iUp'))$('iUp').onclick=()=>upgradeLift(o);if($('iCol'))$('iCol').onclick=()=>recolorLift(o);if($('iFix'))$('iFix').onclick=()=>repairLift(o);if($('iRide'))$('iRide').onclick=()=>rideIntro(o);if($('iLamp'))$('iLamp').onclick=()=>buyRunUpgrade(o,'lit');if($('iSnow'))$('iSnow').onclick=()=>buyRunUpgrade(o,'snow');
+  if($('iUp'))$('iUp').onclick=()=>upgradeLift(o);if($('iCol'))$('iCol').onclick=()=>recolorLift(o);if($('iFix'))$('iFix').onclick=()=>repairLift(o);if($('iEdit'))$('iEdit').onclick=()=>startEditRun(o);if($('iWide'))$('iWide').onclick=()=>widenRun(o);if($('iRide'))$('iRide').onclick=()=>rideIntro(o);if($('iLamp'))$('iLamp').onclick=()=>buyRunUpgrade(o,'lit');if($('iSnow'))$('iSnow').onclick=()=>buyRunUpgrade(o,'snow');
 }
 function hideInfo(){infoObj=null;$('info').style.display='none'}
 function recolorLift(L){const i=LIFT_COLS.indexOf(L.col),c=LIFT_COLS[(i+1)%LIFT_COLS.length];const q=L.queue.slice(),rd=skiers.filter(s=>s.lift===L&&s.state==='lift');scene.remove(L.g);lifts.splice(lifts.indexOf(L),1);
@@ -1229,9 +1256,30 @@ function removeObj(o){
   else{skiers.forEach(s=>{if(s.eatAt===o&&s.state==='eat'){s.mesh.visible=true;decide(s)}});scene.remove(o.g);if(o.road)scene.remove(o.road);buildings.splice(buildings.indexOf(o),1)}
   const refund=Math.round((o.cost||0)*.4);money+=refund;day.refund+=refund;toast(`Снесено: ${o.name} · +${fmt(refund)}`);hideInfo();refreshRings();persist();
 }
+function upScore(pts){const sm=curveSamples(pts);if(sm.length<3)return 0;const step=d2(sm[0],sm[1])||1,w=Math.max(1,Math.round(14/step));let sc=0,worst=1e9,wi=0;
+  for(let i=0;i+w<sm.length;i++){const g=(sm[i].y-sm[i+w].y)/(step*w);if(g<-.1)sc+=-.1-g;if(g<worst){worst=g;wi=i}}return{sc,wi,n:sm.length,pts}}
+function fixRun(silent){// move the climbing piece sideways or downhill until the run only goes down
+  const P=p=>new THREE.Vector3(p.x,heightAt(p.x,p.z),p.z);
+  for(let it=0;it<14;it++){const c=runCheck(curveSamples(runPts));if(!c.fix)break;const cur=upScore(runPts);
+    const j=Math.min(runPts.length-2,Math.floor(cur.wi/cur.n*(runPts.length-1)));const a=runPts[j],b=runPts[j+1];
+    const opts=[];
+    for(const k of [j,j+1])if(k>0&&k<runPts.length-1)opts.push(runPts.filter((_,i)=>i!==k));
+    const dx=b.x-a.x,dz=b.z-a.z,l=Math.hypot(dx,dz)||1,px=-dz/l,pz=dx/l;
+    for(let o=-36;o<=36;o+=6){if(!o)continue;const m=P({x:(a.x+b.x)/2+px*o,z:(a.z+b.z)/2+pz*o});if(inBounds(m))opts.push(runPts.slice(0,j+1).concat([m],runPts.slice(j+1)))}
+    for(const k of [j,j+1])if(k>0&&k<runPts.length-1)for(let o=-24;o<=24;o+=6){if(!o)continue;const q=runPts.slice();q[k]=P({x:q[k].x+px*o,z:q[k].z+pz*o});if(inBounds(q[k]))opts.push(q)}
+    let bestO=null,bs=cur.sc;for(const q of opts){const sc=upScore(q).sc;if(sc<bs-1e-4){bs=sc;bestO=q}}
+    if(!bestO)break;runPts=bestO}
+  const c=runCheck(curveSamples(runPts));if(!silent)toast(c.ok?'🪄 Готово — обошли бугор, трасса идёт только вниз':'Не вышло само: передвинь точку у красного куска',!c.ok);refresh()}
+const widenCost=R=>Math.round(R.len*14/50)*50;
+function widenRun(o){const c=widenCost(o);if(money<c)return toast('Не хватает денег',1);money-=c;day.build+=c;const nw=Math.min(8.5,(o.w||3.9)+2.2);
+  const lit=o.lit,sn=o.snow;skiers.forEach(s=>{if(s.run===o&&s.state==='ski')s.run=null});scene.remove(o.g);runs.splice(runs.indexOf(o),1);
+  const N=makeRun(o.pts,o.name,nw);N.ridden=o.ridden;if(lit){N.lit=true;addLamps(N)}if(sn){N.snow=true;addCannons(N)}skiers.forEach(s=>{if(s.state==='ski'&&!s.run){s.run=N}});
+  burst(N.sm[(N.sm.length/2)|0],'↔ -'+fmt(c));toast(`↔ ${N.name} стала шире: ${M(nw*2)} м`);refreshRings();showInfo(N);persist()}
+function startEditRun(o){setTool('run');editRun=o;o.g.visible=false;runPts=o.pts.map(p=>new THREE.Vector3(p.x,heightAt(p.x,p.z),p.z));toast('✏️ Перетащи белые точки — поменяется только этот кусок');refresh()}
 function buildRun(){
-  const c=runCheck(curveSamples(runPts));if(!c.ok)return toast(c.msg,1);if(money<c.cost)return toast('Не хватает денег',1);
-  money-=c.cost;day.build+=c.cost;day.builtN++;addXP(15);const R=makeRun(runPts);burst(R.sm[0],`${DIFF[R.diff].s} -${fmt(c.cost)}`);toast(`${DIFF[R.diff].s} ${R.name} открыта!`);runPts=[];hover=null;refreshRings();refresh();persist();checkQuest();
+  const c=runCheck(curveSamples(runPts));if(!c.ok)return toast(c.msg,1);const price=editRun?Math.max(0,c.cost-editRun.cost):c.cost;if(money<price)return toast('Не хватает денег',1);
+  let keepW,keepLit,keepSnow,keepName;if(editRun){const o=editRun;keepW=o.w;keepLit=o.lit;keepSnow=o.snow;keepName=o.name;skiers.forEach(s=>{if(s.run===o&&s.state==='ski')leave(s)});scene.remove(o.g);runs.splice(runs.indexOf(o),1);editRun=null}
+  money-=price;day.build+=price;day.builtN++;addXP(15);const R=makeRun(runPts,keepName,keepW);if(keepLit){R.lit=true;addLamps(R)}if(keepSnow){R.snow=true;addCannons(R)}burst(R.sm[0],`${DIFF[R.diff].s} -${fmt(c.cost)}`);toast(`${DIFF[R.diff].s} ${R.name} открыта!`);runPts=[];hover=null;refreshRings();refresh();persist();checkQuest();
 }
 function placeBuilding(){
   if(!bType||!ghostAt)return;const c=bCheck(bType,ghostAt.x,ghostAt.z,bRot);if(!c.ok)return toast(c.msg,1);if(money<c.cost)return toast('Не хватает денег',1);
@@ -1248,7 +1296,7 @@ function onTap(cx,cy){
   const q=snap(p);
   if(tool==='lift'){
     if(!liftA){if(!inBounds(q))return toast(NOT_OWN,1);liftA=q;hover=null}
-    else{const c=liftCheck(liftA,q,liftType);if(!c.ok){hover=q;refresh();return toast(c.msg,1)}if(money<c.cost)return toast('Не хватает денег: нужно '+fmt(c.cost),1);
+    else{let c=liftCheck(liftA,q,liftType);if(!c.ok&&liftType==='tbar'){const c2=liftCheck(liftA,q,'chair');if(c2.ok){liftType='chair';c=c2;toast('Для бугеля круто — ставлю кресельный')}}if(!c.ok){hover=q;refresh();return toast(c.msg,1)}if(money<c.cost)return toast('Не хватает денег: нужно '+fmt(c.cost),1);
       money-=c.cost;day.build+=c.cost;day.builtN++;addXP(15);const L=makeLift(liftA,q,liftType);burst(q,'-'+fmt(c.cost));toast(`${LT[liftType].icon} ${L.name} построен!`);liftA=null;hover=null;refreshRings();persist();checkQuest()}
   }else if(tool==='run'){
     if(!inBounds(q))return toast(NOT_OWN,1);
@@ -1283,8 +1331,29 @@ addEventListener('keydown',e=>{if(ride)return;if(e.key==='Escape'){if(tool==='ru
 let down=null;
 const cv=renderer.domElement;
 cv.addEventListener('contextmenu',e=>e.preventDefault());
+const activePtr=new Set();
+const scrOf=p=>{const v=new THREE.Vector3(p.x,heightAt(p.x,p.z),p.z).project(camera),r=cv.getBoundingClientRect();return[(v.x+1)/2*r.width+r.left,(1-v.y)/2*r.height+r.top]};
+cv.addEventListener('pointerdown',e=>{activePtr.add(e.pointerId);if(ride||tool!=='run'||e.button!==0)return;
+  if(activePtr.size>1){if(drawing){drawing=null;dragI=-1;controls.enabled=true;refresh()}return}
+  // grab an existing point to move it
+  let bi=-1,bd=30;runPts.forEach((q,i)=>{const [sx,sy]=scrOf(q),d=Math.hypot(sx-e.clientX,sy-e.clientY);if(d<bd){bd=d;bi=i}});
+  if(bi>=0){dragI=bi;controls.enabled=false;drawing={drag:true,prev:runPts.map(p=>p.clone()),wasOk:runCheck(curveSamples(runPts)).ok};return}
+  if(!drawMode)return;const g=pickGround(e.clientX,e.clientY);if(!g)return;
+  const start=runPts.length&&d2(g,runPts[runPts.length-1])<14?null:snap(g,12);
+  controls.enabled=false;drawing={pts:start?[start]:[],ext:!start}},true);
+cv.addEventListener('pointermove',e=>{if(!drawing)return;const g=pickGround(e.clientX,e.clientY);if(!g)return;
+  if(drawing.drag){runPts[dragI]=new THREE.Vector3(g.x,g.y,g.z);hover=null;refresh();return}
+  const last=drawing.pts.length?drawing.pts[drawing.pts.length-1]:(drawing.ext?runPts[runPts.length-1]:null);if(!last||d2(g,last)>7){drawing.pts.push(g);drawing.moved=true;if(drawing.pts.length>1||drawing.ext){if(!drawing.ext)runPts=drawing.pts.slice();else runPts=runPts.concat([g]);hover=null;refresh()}}},true);
+const endDraw=e=>{activePtr.delete(e.pointerId);if(!drawing)return;const d=drawing;drawing=null;dragI=-1;controls.enabled=true;
+  if(d.drag){runPts=runPts.map(p=>snap(p,9));let c=runCheck(curveSamples(runPts));if(c.fix){fixRun(true);c=runCheck(curveSamples(runPts))}
+    if(!c.ok&&c.fix&&d.wasOk){runPts=d.prev;toast('Там трасса пошла бы в гору — вернул точку. Тяни в другую сторону',1)}refresh();down=null;return}
+  if(d.moved){const last=runPts[runPts.length-1];runPts[runPts.length-1]=snap(last,14);
+    // thin the stroke into smooth control points
+    const th=[runPts[0]];for(let i=1;i<runPts.length-1;i++)if(d2(runPts[i],th[th.length-1])>14)th.push(runPts[i]);const lp=runPts[runPts.length-1];if(d2(lp,th[th.length-1])>4)th.push(lp);else th[th.length-1]=lp;runPts=th.length>1?th:runPts;
+    const c=runCheck(curveSamples(runPts));if(c.fix)fixRun(true);refresh();down=null}};
+cv.addEventListener('pointerup',endDraw,true);cv.addEventListener('pointercancel',endDraw,true);
 cv.addEventListener('pointerdown',e=>{if(e.isPrimary)down={x:e.clientX,y:e.clientY,t:performance.now(),b:e.button}});
-let lastTap=0;cv.addEventListener('pointerup',e=>{if(ride){down=null;return}if(!down||!e.isPrimary)return;
+let lastTap=0;cv.addEventListener('pointerup',e=>{if(ride){down=null;return}if(!down||!e.isPrimary)return;if(tool==='run'&&!down)return;
   if(tool==='look'&&Math.hypot(e.clientX-down.x,e.clientY-down.y)<8&&performance.now()-lastTap<300){const g=pickGround(e.clientX,e.clientY);if(g){_o.copy(camera.position).sub(controls.target).multiplyScalar(.5);if(_o.length()<controls.minDistance)_o.setLength(controls.minDistance);camGo(g,g.clone().add(_o))}lastTap=0;down=null;return}
   if(Math.hypot(e.clientX-down.x,e.clientY-down.y)<8)lastTap=performance.now();const moved=Math.hypot(e.clientX-down.x,e.clientY-down.y);if(moved<8&&performance.now()-down.t<600&&down.b===0)onTap(e.clientX,e.clientY);down=null});
 let hoverReq=null;
@@ -1359,19 +1428,26 @@ function openResorts(){paused=true;$('mMenu').classList.remove('show');persist()
     <div class="row"><button class="btn" id="bResClose">Закрыть</button></div>`;
   $('mResorts').classList.add('show');$('bResClose').onclick=()=>{$('mResorts').classList.remove('show');paused=false};
   $('resCard').querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>{persist();META.cur=b.dataset.go;saveMeta();location.reload()});
-  if($('bMove'))$('bMove').onclick=()=>{persist();const key='powderpeak-r'+nextN;try{localStorage.setItem(key,JSON.stringify({seed:(Math.random()*1e6)|0,money:startMoney(nextN),price:45,day:1,lifts:[],runs:[],blds:[],gift1m:true}))}catch(e){}META.list.push({key,n:nextN});META.cur=key;saveMeta();location.reload()}}
+  if($('bMove'))$('bMove').onclick=()=>{persist();$('mResorts').classList.remove('show');openMaps('Гора для курорта №'+nextN,m=>{const key='powderpeak-r'+nextN;newGame(key,m,nextN);META.list.push({key,n:nextN});META.cur=key;saveMeta();location.reload()})}}
 $('bResorts').onclick=openResorts;
 $('quest').onclick=openQuests;$('bQuests').onclick=openQuests;
-let newArm=0;$('bNew').onclick=()=>{if(Date.now()-newArm>4000){newArm=Date.now();$('bNew').textContent='Нажми ещё раз — курорт удалится';setTimeout(()=>$('bNew').textContent='Новая гора (сбросить всё)',4000);return}
-  try{localStorage.setItem(SAVE_KEY,JSON.stringify({seed:(Math.random()*1e6)|0,money:startMoney(RESORT),price:45,day:1,lifts:[],runs:[],blds:[],gift1m:true}));localStorage.removeItem('powderpeak-v1')}catch(e){}location.reload()};
+function openMaps(title,onPick){paused=true;$('mMenu').classList.remove('show');
+  $('mapCard').innerHTML=`<h2>🗺️ ${title}</h2><p>Выбери гору — от неё зависят склоны, трассы и вид.</p><div class="gfx">${Object.entries(MAPS).map(([k,m])=>`<button data-m="${k}"><b>${m.i} ${m.n}</b>${k==='alps'?'<span class="rec">для начала</span>':''}<span>${m.d}</span></button>`).join('')}</div><div class="row"><button class="btn" id="mapX">Отмена</button></div>`;
+  $('mMap').classList.add('show');$('mapX').onclick=()=>{$('mMap').classList.remove('show');paused=false};
+  $('mapCard').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>onPick(b.dataset.m))}
+const newGame=(key,map,n)=>{try{localStorage.setItem(key,JSON.stringify({seed:(Math.random()*1e6)|0,map,money:startMoney(n),price:45,day:1,lifts:[],runs:[],blds:[],gift1m:true}));if(key===SAVE_KEY)localStorage.removeItem('powderpeak-v1')}catch(e){}};
+let newArm=0;$('bNew').onclick=()=>openMaps('Новая гора (всё начнётся заново)',m=>{newGame(SAVE_KEY,m,RESORT);location.reload()});
+document.querySelector('#mIntro p').textContent+=' Гора: '+MAP.i+' '+MAP.n+'.';
 if(RESORT>1){document.querySelector('#mIntro h2').textContent='🏔️ Курорт №'+RESORT;document.querySelector('#mIntro p').textContent='Новая гора, новый старт! Стартовый капитал '+fmt(startMoney(RESORT))+'. Прошлые курорты видны на горизонте, вернуться можно через ⚙ → Мои курорты.'}
 $('bStart').onclick=()=>{$('mIntro').classList.remove('show');paused=false};
-if(!save||(!save.lifts||!save.lifts.length)&&(save.day||1)===1){$('mIntro').classList.add('show');paused=true}
+if(!save){openMaps('Выбери гору для своего курорта',m=>{newGame(SAVE_KEY,m,RESORT);location.reload()});$('mapX').style.display='none'}
+else if((!save.lifts||!save.lifts.length)&&(save.day||1)===1){$('mIntro').classList.add('show');paused=true}
 
 /* ================= snow & sky ================= */
 const SN=QS[Q].snow,snowPos=new Float32Array(SN*3);for(let i=0;i<SN;i++){snowPos[i*3]=(Math.random()-.5)*240;snowPos[i*3+1]=Math.random()*140;snowPos[i*3+2]=(Math.random()-.5)*240}
 const snowG=new THREE.BufferGeometry();snowG.setAttribute('position',new THREE.BufferAttribute(snowPos,3));
-const snow=new THREE.Points(snowG,new THREE.PointsMaterial({color:0xffffff,size:.7,transparent:true,opacity:.85,depthWrite:false}));scene.add(snow);
+const flakeTex=(()=>{const cv=document.createElement('canvas');cv.width=cv.height=32;const g=cv.getContext('2d');const gr=g.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.45,'rgba(255,255,255,.85)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,32,32);return new THREE.CanvasTexture(cv)})();
+const snow=new THREE.Points(snowG,new THREE.PointsMaterial({color:0xffffff,map:flakeTex,size:1.15,transparent:true,opacity:.9,depthWrite:false}));snow.frustumCulled=false;scene.add(snow);
 const SKY={dt:new THREE.Color(0x3d7fd0),dh:new THREE.Color(0xd4e6f7),st:new THREE.Color(0x3a4a86),sh:new THREE.Color(0xf6a06a),nt:new THREE.Color(0x03060f),nh:new THREE.Color(0x101a33)};
 const grey=new THREE.Color(0xb8c2cf),_sd=new THREE.Vector3(),_md=new THREE.Vector3(.45,.75,-.4).normalize(),_tc=new THREE.Color(),_hc=new THREE.Color(),_w=new THREE.Color(0xffffff);
 const hemiDay=new THREE.Color(0xd6e6ff),hemiNight=new THREE.Color(0x46588f),winDay=new THREE.Color(0x8fa7bf),winNight=new THREE.Color(0xffd27a);
@@ -1386,12 +1462,13 @@ function sky(){const h=minutes/60,W=WEATHER[weather];
   _tc.setRGB(SKY.dt.r*dayF+SKY.st.r*twF+SKY.nt.r*nightF,SKY.dt.g*dayF+SKY.st.g*twF+SKY.nt.g*nightF,SKY.dt.b*dayF+SKY.st.b*twF+SKY.nt.b*nightF);
   _hc.setRGB(SKY.dh.r*dayF+SKY.sh.r*twF+SKY.nh.r*nightF,SKY.dh.g*dayF+SKY.sh.g*twF+SKY.nh.g*nightF,SKY.dh.b*dayF+SKY.sh.b*twF+SKY.nh.b*nightF);
   const cl=W.cloud*(1-nightF*.7);_tc.lerp(grey,cl*.85*(dayF+twF*.5));_hc.lerp(grey,cl*.7*(dayF+twF*.5));
+  if(MAP.warm){_tc.lerp(new THREE.Color(0x7a5a9e),.45*(1-nightF));_hc.lerp(new THREE.Color(0xf4b6b0),.5*(1-nightF))}
   skyU.top.value.copy(_tc);skyU.hor.value.copy(_hc);scene.background.copy(_hc);scene.fog.color.copy(_hc);scene.fog.near=360*W.fog;scene.fog.far=1100*W.fog*(1-nightF*.25);
   const a=Math.PI*(h-6.8)/11.4;_sd.set(Math.cos(a)*-.8,Math.sin(a)*.55+.04,.4).normalize();skyU.sunDir.value.copy(_sd);skyU.sunCol.value.setRGB(1,.9-.35*twF,.78-.5*twF).multiplyScalar((1-W.cloud*.85)*(1-nightF));
   const ctr=ride?ride.p:controls.target;sun.target.position.copy(ctr);
   if(nightF>.5){sun.position.copy(ctr).addScaledVector(_md,450);sun.color.setRGB(.62,.72,1);sun.intensity=.32*nightF*(1-W.cloud*.6)}
-  else{const sd=_sd.y<.08?_sd.clone().setY(.08).normalize():_sd;sun.position.copy(ctr).addScaledVector(sd,450);sun.color.setRGB(1,.94-.3*twF,.84-.48*twF);sun.intensity=(.15+1.05*dayF+.35*twF)*W.sunI*(1-nightF)}
-  hemi.color.copy(hemiDay).lerp(hemiNight,nightF);hemi.intensity=(.5*dayF+.34*twF+.2*nightF)+.2*W.cloud*dayF;
+  else{const sd=_sd.y<.08?_sd.clone().setY(.08).normalize():_sd;sun.position.copy(ctr).addScaledVector(sd,450);sun.color.setRGB(1,.94-.3*twF-(MAP.warm?.12:0),.84-.48*twF-(MAP.warm?.22:0));sun.intensity=(.15+1.05*dayF+.35*twF)*W.sunI*(1-nightF)}
+  hemi.color.copy(hemiDay).lerp(hemiNight,nightF);if(MAP.warm)hemi.color.lerp(new THREE.Color(0xffb8c4),.55*(1-nightF));hemi.intensity=(.5*dayF+.34*twF+.2*nightF)+.2*W.cloud*dayF;
   renderer.toneMappingExposure=1.22+nightF*.25;
   winMat.color.copy(winDay).lerp(winNight,Math.max(nightF,twF*.8,.15));
   const lampOn=Math.max(nightF,twF*.65);lampGlowMat.opacity=lampOn;lampPoolMat.opacity=lampOn*.55;
@@ -1483,7 +1560,13 @@ function makeGates(R){const g=new THREE.Group(),list=[];const n=R.sm.length;let 
     for(const s2 of [-1,1]){const x=cx+lx*w*s2,z=cz+lz*w*s2;const p=new THREE.Mesh(gatePoleG,fm);p.position.set(x,heightAt(x,z),z);p.castShadow=true;g.add(p)}
     const fl=new THREE.Mesh(new THREE.PlaneGeometry(w*2,.7),fm);fl.position.set(cx,heightAt(cx,cz)+1.75,cz);fl.rotation.y=Math.atan2(tx,tz);g.add(fl);
     list.push({i,x:cx,z:cz,lx,lz,w,ok:null,fm});side=-side}
-  scene.add(g);return{g,list}}
+  const kick=[];for(let i=34;i<n-20;i+=48){const a=R.sm[i-2],b=R.sm[i+2];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const off=((i/48)|0)%2?-1.2:1.2,lx=-tz,lz=tx;
+    const cx=R.sm[i].x+lx*off,cz=R.sm[i].z+lz*off,cy=heightAt(cx,cz);
+    const sh=new THREE.Shape();sh.moveTo(-3,0);sh.lineTo(2.2,0);sh.lineTo(2.2,1.6);sh.quadraticCurveTo(-.5,.9,-3,0);const kg=new THREE.ExtrudeGeometry(sh,{depth:4.4,bevelEnabled:false});kg.translate(0,0,-2.2);kg.rotateY(-Math.PI/2);
+    const km=new THREE.Mesh(kg,new THREE.MeshLambertMaterial({color:0xf8fbff}));km.position.set(cx,cy-.1,cz);km.rotation.y=Math.atan2(tx,tz);km.castShadow=true;km.receiveShadow=true;g.add(km);
+    for(const sd of [-1,1]){const e=box(.12,.12,5.2,0x2563eb,0,0,0);e.position.set(cx+lx*2.25*sd,cy+.85,cz+lz*2.25*sd);e.rotation.set(-.3,Math.atan2(tx,tz),0);g.add(e)}
+    kick.push({x:cx,z:cz,tx,tz,lx,lz,used:false})}
+  scene.add(g);return{g,list,kick}}
 // ski tracks in the snow
 const TR_N=1800,trPos=new Float32Array(TR_N*6),trG=new THREE.BufferGeometry();trG.setAttribute('position',new THREE.BufferAttribute(trPos,3));trG.setDrawRange(0,0);
 const tracks=new THREE.LineSegments(trG,new THREE.LineBasicMaterial({color:0x7f93b3,transparent:true,opacity:.7}));tracks.frustumCulled=false;scene.add(tracks);let trI=0,trLast=null;
@@ -1495,9 +1578,9 @@ function seedStreak(i,z){let x,y;do{x=(Math.random()-.5)*12;y=(Math.random()-.5)
 for(let i=0;i<SLN;i++)seedStreak(i,-2-Math.random()*40);
 function updStreaks(dt,sp){slMat.opacity=ride?clamp((sp-15)/16,0,.55):0;if(slMat.opacity<=0)return;for(let i=0;i<SLN;i++){slPos[i*6+2]+=sp*dt*1.6;slPos[i*6+5]=slPos[i*6+2]-1.2-sp*.08;if(slPos[i*6+2]>-1)seedStreak(i,-40)}slG.attributes.position.needsUpdate=true}
 // snow spray
-const sprayN=220,sprayPos=new Float32Array(sprayN*3),sprayV=[];for(let i=0;i<sprayN;i++)sprayV.push({x:0,y:-999,z:0,vx:0,vy:0,vz:0,t:1});
+const sprayN=420,sprayPos=new Float32Array(sprayN*3),sprayV=[];for(let i=0;i<sprayN;i++)sprayV.push({x:0,y:-999,z:0,vx:0,vy:0,vz:0,t:1});
 const sprayG=new THREE.BufferGeometry();sprayG.setAttribute('position',new THREE.BufferAttribute(sprayPos,3));
-const sprayPts=new THREE.Points(sprayG,new THREE.PointsMaterial({color:0xffffff,size:.5,transparent:true,opacity:.9,depthWrite:false}));sprayPts.frustumCulled=false;scene.add(sprayPts);
+const sprayPts=new THREE.Points(sprayG,new THREE.PointsMaterial({color:0xffffff,map:flakeTex,size:1.35,transparent:true,opacity:.9,depthWrite:false}));sprayPts.frustumCulled=false;scene.add(sprayPts);
 function emitSpray(p,vx,vy,vz){const q=sprayV.find(x=>x.t>=1);if(!q)return;q.x=p.x+(Math.random()-.5)*.6;q.y=p.y+.2;q.z=p.z+(Math.random()-.5)*.6;q.vx=vx;q.vy=vy;q.vz=vz;q.t=0}
 function updSpray(dt){for(let i=0;i<sprayN;i++){const q=sprayV[i];if(q.t<1){q.t+=dt/.7;q.vy-=12*dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.z+=q.vz*dt}sprayPos[i*3]=q.x;sprayPos[i*3+1]=q.t<1?q.y:-999;sprayPos[i*3+2]=q.z}sprayG.attributes.position.needsUpdate=true}
 // collisions
@@ -1514,6 +1597,9 @@ function audioInit(){if(AC){try{AC.resume()}catch(e){}return}try{AC=new (window.
 function audioUpd(sp,skid){if(!AC)return;const t=AC.currentTime,on=ride&&!muted&&!ride.done;windG.gain.setTargetAtTime(on?clamp(sp/32,0,1)*.55:0,t,.12);windF.frequency.setTargetAtTime(220+sp*40,t,.12);scrG.gain.setTargetAtTime(on?clamp(skid*.02,0,.18):0,t,.05)}
 function tone(f,d,v){if(!AC||muted)return;try{const o=AC.createOscillator(),g=AC.createGain();o.frequency.value=f;g.gain.value=v||.15;g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+d);o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+d)}catch(e){}}
 function thud(){if(!AC||muted)return;try{const o=AC.createOscillator(),g=AC.createGain();o.type='triangle';o.frequency.value=110;o.frequency.exponentialRampToValueAtTime(35,AC.currentTime+.35);g.gain.value=.6;g.gain.exponentialRampToValueAtTime(.001,AC.currentTime+.4);o.connect(g);g.connect(AC.destination);o.start();o.stop(AC.currentTime+.4)}catch(e){}}
+const RATES=[[400,'ЧИСТО','#16a34a'],[900,'КРУТО','#2563eb'],[1600,'ОГОНЬ','#ea580c'],[1e9,'ЛЕГЕНДА','#db2777']];
+function showTrick(name,pts,mult){const r=RATES.find(x=>pts<x[0]);$('rBadge').style.setProperty('--bc',r[2]);$('rBadgeT').textContent=r[1];$('rTrickN').textContent=name;$('rTrickP').textContent='+'+pts.toLocaleString('ru-RU')+(mult>1?'  ×'+mult.toFixed(1):'');
+  const t=$('rTrick');t.classList.remove('show');void t.offsetWidth;t.classList.add('show');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('show'),1900)}
 function rideMsg(t,ms,big){const m=$('rMsg');m.textContent=t;m.style.fontSize=big?'64px':'30px';m.classList.add('show');clearTimeout(m._t);m._t=setTimeout(()=>m.classList.remove('show'),ms||1200)}
 function rideHud(){$('rCam').title='Камера: '+CAM_N[camMode];$('rSnd').textContent=muted?'🔇':'🔊'}
 function profilePath(ys,W,Hh,pad){const mn=Math.min(...ys),mx=Math.max(...ys),rg=(mx-mn)||1,n=ys.length;
@@ -1537,7 +1623,7 @@ function rideIntro(R,opt){opt=opt||{};if(!R&&!opt.lift)return;setTool('look');hi
     <div class="gfx" style="grid-template-columns:1fr 1fr;margin:0 0 12px"><button data-g="ski" class="${gear==='ski'?'on':''}"><b>🎿 Лыжи</b><span>Точные повороты, палки для разгона</span></button><button data-g="board" class="${gear==='board'?'on':''}"><b>🏂 Сноуборд</b><span>Резвее в поворотах, круче трюки</span></button></div>
     <button class="pre-go" id="preGo">${gear==='board'?'🏂':'⛷️'} Поехали!</button>
     <button class="pre-alt" id="preAlt">Сменить трассу</button>
-    <div class="pre-hint">${coarse?'Левый палец рулит · в прыжке веди палец — закрутишь 360°, держи Разгон — грэб':'← → руль · ↑ разгон · ↓ тормоз · пробел прыжок · в воздухе ← → вращение, ↑ грэб · C камера'}</div>`;
+    <div class="pre-hint">${coarse?'Левый палец рулит · на трамплине: веди палец — вращение, Разгон — грэб, Тормоз — сальто':'← → руль · ↑ разгон · ↓ тормоз · пробел прыжок · в воздухе ← → вращение, ↑ грэб, ↓ сальто · C камера'}</div>`;
   $('mPre').classList.add('show');
   $('preCard').querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{gear=b.dataset.g;try{localStorage.setItem('powderpeak-gear',gear)}catch(e){}rideIntro(R,opt)});
   $('preGo').onclick=()=>{$('mPre').classList.remove('show');paused=false;startRide(R,opt)};
@@ -1549,7 +1635,7 @@ function startRide(R,opt){opt=opt||{};$('mRide').classList.remove('show');if(!R&
   else{const L=opt.lift;s0={x:L.b.x+L.dir.x*6,z:L.b.z+L.dir.z*6};s0.y=heightAt(s0.x,s0.z);const gx=heightAt(s0.x+1,s0.z)-heightAt(s0.x-1,s0.z),gz=heightAt(s0.x,s0.z+1)-heightAt(s0.x,s0.z-1);f0=Math.atan2(-gx,-gz)}
   const key=R?R.name:'free:'+opt.lift.name;
   ride={R,key,lift:opt.lift,p:new THREE.Vector3(s0.x,s0.y,s0.z),f:f0,vx:0,vz:0,vy:0,air:false,airT:0,airTot:0,lastG:s0.y,prevVy:0,t:0,cd:2.7,cdShown:4,top:0,crashes:0,crashT:0,tumble:0,slow:0,st:0,lean:0,idx:3,pen:0,
-    gates:R?makeGates(R):null,spin:0,score:0,combo:0,grabT:0,board:gear==='board',rec:[],recT:0,stuckT:0,warnT:0,jumpLatch:false,prevSpeed:speed,camYaw:f0,skid:0,sp:0};
+    gates:R?makeGates(R):null,spin:0,flip:0,score:0,combo:0,comboT:0,grabT:0,board:gear==='board',rec:[],recT:0,stuckT:0,warnT:0,jumpLatch:false,prevSpeed:speed,camYaw:f0,skid:0,sp:0};
   speed=1;document.querySelectorAll('#speed button').forEach(x=>x.classList.toggle('on',x.dataset.s==='1'));
   setGear(rider,gear==='board');setGear(ghost,gear==='board');buildTreeHash();rider.visible=true;controls.enabled=false;document.body.classList.add('riding');$('ride').hidden=false;
   trI=0;trLast=null;trG.setDrawRange(0,0);
@@ -1584,14 +1670,14 @@ function unstick(r,msg){const p=r.p;let q,q2;
   else{const dx=BASE.x-p.x,dz=BASE.z-p.z,l=Math.hypot(dx,dz)||1;let k=3;q={x:p.x+dx/l*k,z:p.z+dz/l*k};while(k<30&&!safeSpot(q.x,q.z)){k+=2;q={x:p.x+dx/l*k,z:p.z+dz/l*k}}q2={x:q.x+dx/l*5,z:q.z+dz/l*5}}
   p.set(q.x,heightAt(q.x,q.z),q.z);r.f=Math.atan2(q2.x-q.x,q2.z-q.z);r.vx=Math.sin(r.f)*6;r.vz=Math.cos(r.f)*6;r.air=false;r.vy=0;r.prevVy=0;r.lastG=p.y;r.stuckT=0;r.slowT=0;r.blockT=0;r.spin=0;
   if(msg)rideMsg(msg,900)}
-function crash(r,why){r.crashT=1.4;r.slow=.7;r.crashes++;r.vx=r.vz=0;rideMsg(why||'💥 Упал!');thud();window.haptic&&window.haptic('heavy');for(let k=0;k<40;k++)emitSpray(r.p,(Math.random()-.5)*9,Math.random()*7,(Math.random()-.5)*9)}
+function crash(r,why){r.combo=0;r.flip=0;r.spin=0;r.crashT=1.4;r.slow=.7;r.crashes++;r.vx=r.vz=0;rideMsg(why||'💥 Упал!');thud();window.haptic&&window.haptic('heavy');for(let k=0;k<40;k++)emitSpray(r.p,(Math.random()-.5)*9,Math.random()*7,(Math.random()-.5)*9)}
 function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
   if(r.cd>0){r.cd-=dt0;const n=Math.ceil(r.cd);if(n!==r.cdShown&&n>0){r.cdShown=n;rideMsg(String(n),700,true);tone(520,.12)}if(r.cd<=0){rideMsg('СТАРТ!',700,true);tone(880,.25);r.vx=Math.sin(r.f)*5;r.vz=Math.cos(r.f)*5}}
   const dt=dt0*(r.slow>0?.35:1);r.slow-=dt0;
   const L=keys.l,Rt=keys.r,tuck=keys.tuck,brake=keys.brake,inp=thumb.on?thumb.v:(Rt?1:0)-(L?1:0),p=r.p;
   r.st+=(inp-r.st)*Math.min(1,dt*9);let sp=Math.hypot(r.vx,r.vz),skid=0;
   if(r.cd<=0&&r.crashT<=0){r.t+=dt;
-    if(r.air)r.spin+=inp*(r.board?8:7)*dt;else r.f-=r.st*((r.board?3.1:2.7)/(1+sp*.03))*dt;
+    if(r.air){r.spin+=inp*(r.board?8:7)*dt;if(brake)r.flip+=8.6*dt}else r.f-=r.st*((r.board?3.1:2.7)/(1+sp*.03))*dt;
     const fx=Math.sin(r.f),fz=Math.cos(r.f),lx=fz,lz=-fx;
     if(!r.air){const e=.8,gx=(heightAt(p.x+e,p.z)-heightAt(p.x-e,p.z))/(2*e),gz=(heightAt(p.x,p.z+e)-heightAt(p.x,p.z-e))/(2*e);
       r.vx-=20*gx*dt;r.vz-=20*gz*dt;
@@ -1614,13 +1700,18 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
       else{p.y=g;r.prevVy=clamp(vyG,-40,40)}}
     if(r.air){r.airT+=dt;if(tuck)r.grabT=(r.grabT||0)+dt;r.vy-=30*dt;p.y+=r.vy*dt;if(p.y<=g){p.y=g;r.air=false;r.prevVy=0;if(r.airT>.25)r.airTot+=r.airT;
       const vd=Math.atan2(r.vx,r.vz);let da=Math.abs(((vd-r.f)%(2*Math.PI)+3*Math.PI)%(2*Math.PI)-Math.PI);
-      const turns=Math.round(r.spin/(2*Math.PI)),rem=Math.abs(r.spin-turns*2*Math.PI);r.spin=0;
-      if(rem>.75&&r.airT>.3){crash(r,'💥 Не докрутил!');r.combo=0}
-      else if(turns!==0||(r.grabT>.25)){const deg=Math.abs(turns)*360,pts=Math.round(deg*1.5+r.grabT*300+r.airT*100)*(1+r.combo*.5);r.score+=Math.round(pts);r.combo++;
-        rideMsg(`${deg?deg+'°':''}${deg&&r.grabT>.25?' + ':''}${r.grabT>.25?'Грэб':''}! +${Math.round(pts)}${r.combo>1?` ×${(1+(r.combo-1)*.5).toFixed(1)}`:''}`,1300);tone(784,.12,.15);setTimeout(()=>tone(1046,.18,.15),110);for(let k=0;k<24;k++)emitSpray(p,(Math.random()-.5)*7,2+Math.random()*4,(Math.random()-.5)*7)}
+      const half=r.board?Math.PI:2*Math.PI,turns=Math.round(r.spin/half),rem=Math.abs(r.spin-turns*half),dir=Math.sign(r.spin);r.spin=0;
+      const fl=Math.round(r.flip/(2*Math.PI)),frem=Math.abs(r.flip-fl*2*Math.PI);r.flip=0;
+      if((rem>.8||frem>.9)&&r.airT>.3){crash(r,frem>.9?'💥 Не докрутил сальто!':'💥 Не докрутил!');r.combo=0}
+      else if(turns!==0||fl>0||(r.grabT>.25)){const deg=Math.abs(turns)*(r.board?180:360),parts=[];
+        if(fl)parts.push(fl>1?'Дабл бэкфлип':'Бэкфлип');if(deg)parts.push((dir>0?'Фронтсайд ':'Бэксайд ')+deg);if(r.grabT>.25)parts.push(r.grabT>.7?'Тугой грэб':'Грэб');
+        const mult=1+r.combo*.5,pts=Math.round((deg*1.5+fl*650+r.grabT*320+r.airT*120)*mult);r.score+=pts;r.combo++;r.comboT=8;
+        showTrick(parts.join(' · '),pts,mult);tone(784,.12,.15);setTimeout(()=>tone(1046,.18,.15),110);window.haptic&&window.haptic('medium');for(let k=0;k<30;k++)emitSpray(p,(Math.random()-.5)*8,2+Math.random()*4,(Math.random()-.5)*8)}
       r.grabT=0;
       if(r.crashT>0){}else if(r.airT>.35&&sp>6&&da>1.1)crash(r,'💥 Неудачное приземление!');else if(r.airT>.55&&!turns){rideMsg(`✈ ${r.airT.toFixed(1)} с в воздухе!`,900);for(let k=0;k<14;k++)emitSpray(p,(Math.random()-.5)*6,2+Math.random()*3,(Math.random()-.5)*6)}}}
     r.lastG=g;
+    if(r.comboT>0){r.comboT-=dt;if(r.comboT<=0)r.combo=0}
+    if(r.gates&&!r.air)for(const K of r.gates.kick){if(K.used)continue;const dx=p.x-K.x,dz=p.z-K.z,al=dx*K.tx+dz*K.tz,lat=dx*K.lx+dz*K.lz;if(Math.abs(lat)<2.4&&al>-.5&&al<2.6&&sp>4){K.used=true;r.air=true;r.airT=0;r.vy=9+sp*.34;p.y+=.3;tone(420,.1,.1);for(let k=0;k<18;k++)emitSpray(p,(Math.random()-.5)*5,2+Math.random()*3,(Math.random()-.5)*5);break}}
     // progress along the run, gates, finish
     if(r.R){const sm=r.R.sm;let bi=r.idx,bd=1e9;for(let i=Math.max(0,r.idx-6);i<Math.min(sm.length,r.idx+30);i++){const d=(sm[i].x-p.x)**2+(sm[i].z-p.z)**2;if(d<bd){bd=d;bi=i}}if(bi>r.idx)r.idx=bi;
       let passed=0;for(const G of r.gates.list){if(G.ok===null&&r.idx>=G.i){const d=(p.x-G.x)*G.lx+(p.z-G.z)*G.lz;if(Math.abs(d)<=G.w+.6){G.ok=true;G.fm.color.setHex(0x22c55e);tone(990,.09,.1)}else{G.ok=false;r.pen+=2;G.fm.color.setHex(0x64748b);rideMsg('🚩 Ворота пропущены: +2 с',1000);tone(200,.2,.12)}}if(G.ok)passed++}
@@ -1628,7 +1719,7 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
       const e=sm[sm.length-1];if(r.t>2&&((r.idx>=sm.length-5&&Math.hypot(p.x-e.x,p.z-e.z)<20)||r.idx>=sm.length-2||Math.hypot(p.x-BASE.x,p.z-BASE.z)<20)){finishRide();return}}
     else if(r.t>2&&Math.hypot(p.x-BASE.x,p.z-BASE.z)<24){finishRide();return}
     // effects: spray, tracks, record ghost
-    if(!r.air&&sp>4){const n=Math.min(6,Math.round(skid/6+(brake?3:0)));for(let k=0;k<n;k++)emitSpray(p,-r.vx*.15+lx*inp*5+(Math.random()-.5)*2,1.2+Math.random()*2.2,-r.vz*.15+lz*inp*5+(Math.random()-.5)*2)}
+    if(!r.air&&sp>4){const n=Math.min(10,Math.round(skid/4+(brake?5:0)+sp*.08));for(let k=0;k<n;k++)emitSpray(p,-r.vx*.15+lx*inp*5+(Math.random()-.5)*2,1.2+Math.random()*2.2,-r.vz*.15+lz*inp*5+(Math.random()-.5)*2)}
     if(!r.air&&sp>1){const s=.3,a={x:p.x-lx*s,y:heightAt(p.x-lx*s,p.z-lz*s)+.07,z:p.z-lz*s},b={x:p.x+lx*s,y:heightAt(p.x+lx*s,p.z+lz*s)+.07,z:p.z+lz*s};if(trLast&&Math.hypot(a.x-trLast[0].x,a.z-trLast[0].z)>.6){addTrack(trLast[0],a);addTrack(trLast[1],b);trLast=[a,b]}else if(!trLast)trLast=[a,b]}else trLast=null;
     r.recT+=dt;if(r.recT>=.1){r.recT=0;r.rec.push([+p.x.toFixed(1),+p.y.toFixed(1),+p.z.toFixed(1),+r.f.toFixed(2)])}
     if(!r.air&&sp<3.2&&!brake){const k=(3.2-sp)*2.2*dt;r.vx+=Math.sin(r.f)*k;r.vz+=Math.cos(r.f)*k}
@@ -1640,7 +1731,7 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
   // rider pose
   r.lean+=((r.st*clamp(sp/14,0,1)*.6)-r.lean)*Math.min(1,dt*8);
   const crouch=tuck?1:(brake?.45:clamp(.22+sp*.012,0,.55));
-  rider.position.copy(p);if(r.board)rider.rotation.set(r.tumble-r.lean*.9,r.f+Math.PI/2+r.spin,0);else rider.rotation.set(r.tumble,r.f+r.spin,-r.lean);pose(rider,{c:r.air&&tuck?.9:crouch,st:r.st,lean:r.lean,brake:brake&&!r.air,air:r.air,tuck,t:r.t,grab:r.air&&tuck,pole:tuck&&sp<6&&!r.air});
+  rider.position.copy(p);if(r.board)rider.rotation.set(r.tumble-r.lean*.9,r.f+Math.PI/2+r.spin,r.flip);else rider.rotation.set(r.tumble-r.flip,r.f+r.spin,-r.lean);pose(rider,{c:r.air&&tuck?.9:crouch,st:r.st,lean:r.lean,brake:brake&&!r.air,air:r.air,tuck,t:r.t,grab:r.air&&tuck,pole:tuck&&sp<6&&!r.air});
   // ghost of the best run
   if(ghost.visible){const gh=ghosts[r.key],k=r.t*10,i=Math.min(gh.length-2,Math.floor(k)),f=Math.min(1,k-i),a=gh[i],b=gh[i+1];ghost.position.set(a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f,a[2]+(b[2]-a[2])*f);ghost.rotation.set(0,a[3]+(b[3]-a[3])*f,0);pose(ghost,{c:.4,st:0,lean:0,t:r.t})}
   // camera
@@ -1648,15 +1739,15 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
   const tyaw=sp>2.5?Math.atan2(r.vx,r.vz):r.f;let dy=tyaw-r.camYaw;while(dy>Math.PI)dy-=2*Math.PI;while(dy<-Math.PI)dy+=2*Math.PI;r.camYaw+=dy*Math.min(1,dt0*(fp?12:4));
   const cdx=Math.sin(fp?r.f:r.camYaw),cdz=Math.cos(fp?r.f:r.camYaw);
   if(fp){_hp.set(p.x+Math.sin(r.f)*.35,p.y+(2.6-crouch*.45)*1.3,p.z+Math.cos(r.f)*.35);camera.position.copy(_hp);_look.set(p.x+cdx*12,p.y+.6,p.z+cdz*12);camLook.copy(_look)}
-  else{const back=camMode===1?18:8.5,up=camMode===1?9:3.6;_cam.set(p.x-cdx*back,0,p.z-cdz*back);_cam.y=Math.max(p.y+up,heightAt(_cam.x,_cam.z)+2.2);
-    camera.position.lerp(_cam,1-Math.exp(-dt0*7));_look.set(p.x+cdx*6,p.y+1.6,p.z+cdz*6);camLook.lerp(_look,1-Math.exp(-dt0*12))}
+  else{const back=camMode===1?18:10.5,up=camMode===1?9:5.2;_cam.set(p.x-cdx*back,0,p.z-cdz*back);_cam.y=Math.max(p.y+up,heightAt(_cam.x,_cam.z)+2.2);
+    camera.position.lerp(_cam,1-Math.exp(-dt0*7));_look.set(p.x+cdx*9,p.y+.8,p.z+cdz*9);camLook.lerp(_look,1-Math.exp(-dt0*12))}
   if(sp>24&&!fp){camera.position.x+=(Math.random()-.5)*(sp-24)*.012;camera.position.y+=(Math.random()-.5)*(sp-24)*.012}
   camera.lookAt(camLook);if(fp)camera.rotateZ(-r.lean*.35);
   const fv=(innerWidth<innerHeight?72:60)+sp*.55;if(Math.abs(camera.fov-fv)>.3){camera.fov+=(fv-camera.fov)*.1;camera.updateProjectionMatrix()}
   updStreaks(dt0,sp);audioUpd(sp,skid);
   if(r.prof){let fr;if(r.R)fr=r.idx/(r.R.sm.length-1);else{const a=r.lift.b,tot=Math.hypot(a.x-BASE.x,a.z-BASE.z)||1;fr=clamp(1-Math.hypot(p.x-BASE.x,p.z-BASE.z)/tot,0,1)}
     const x=fr*200,y=4+(1-(clamp(p.y,r.prof.mn,r.prof.mx)-r.prof.mn)/((r.prof.mx-r.prof.mn)||1))*32;const d=$('rProfDot');d.setAttribute('cx',x.toFixed(1));d.setAttribute('cy',y.toFixed(1))}
-  $('rScore').textContent=r.score?'★ '+r.score:'';
+  $('rScore').textContent='';$('rPtsV').textContent='★ '+r.score.toLocaleString('ru-RU');$('rPtsX').textContent=r.combo>0?'×'+(1+r.combo*.5).toFixed(1):'';
   $('rTime').textContent=(r.t+r.pen).toFixed(1)+' с';$('rSpd').textContent=Math.round(sp*5)+' км/ч'}
 // controls: keyboard + on-screen buttons
 const KEYMAP={ArrowLeft:'l',a:'l',ф:'l',ArrowRight:'r',d:'r',в:'r',ArrowUp:'tuck',w:'tuck',ц:'tuck',ArrowDown:'brake',s:'brake',ы:'brake',' ':'jump'};
