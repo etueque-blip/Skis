@@ -105,7 +105,7 @@ body.riding #top,body.riding #bottom,body.riding #side,body.riding #miniWrap,bod
 #rBoostBar{position:absolute;right:max(12px,env(safe-area-inset-right,0px));top:calc(env(safe-area-inset-top,0px) + 102px);display:flex;align-items:center;gap:6px;padding:4px 8px}
 #rBoostBar i{display:block;width:96px;height:8px;border-radius:6px;background:#ffffff22;overflow:hidden}#rBoostBar b{display:block;height:100%;width:100%;background:linear-gradient(90deg,#facc15,#f97316);transition:width .1s}
 #rBoostBar.on b{background:linear-gradient(90deg,#fde047,#fb7185)}
-#rTricks{display:flex;gap:6px;opacity:.35;transition:opacity .15s}#ride.inair #rTricks{opacity:1}#rTricks .rb{padding:8px 10px}
+#rTricks{display:flex;gap:6px;opacity:.35;transition:opacity .15s}#rTricks .rb{padding:8px 10px}
 #rHelp{display:none!important;position:absolute;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 18px);padding:6px 12px;font-size:12px;color:var(--mut);white-space:nowrap}
 @media (pointer:coarse){#rHelp{display:none}}
 #rTop .btn{padding:6px 9px}
@@ -290,10 +290,10 @@ body.building #quest,body.building #info{display:none!important}
   <div id="rMsg"></div>
   <div id="rTrick"><div id="rLand"></div><div id="rBadge"><span id="rBadgeT"></span></div><div id="rTrickN"></div><div id="rTrickP"></div></div>
   <div class="pn" id="rPts"><b id="rPtsV">0</b><span id="rPtsX"></span></div>
-  <div id="rThumb"><div id="rKnobBase"><div id="rKnob"></div></div><span>Веди пальцем влево-вправо</span></div>
+  <div id="rThumb"><div id="rKnobBase"><div id="rKnob"></div></div><span>Влево-вправо — поворот · в прыжке потяни вниз — сальто</span></div>
   <div class="pn" id="rProf"><svg viewBox="0 0 200 40" preserveAspectRatio="none"><path id="rProfA"/><path id="rProfL"/><circle id="rProfDot" r="3.2"/></svg></div>
   <div class="rpad rleft"><button class="rb" id="rL" aria-label="Влево">◀</button><button class="rb" id="rR" aria-label="Вправо">▶</button></div>
-  <div class="rpad rright"><div id="rTricks"><button class="rb sm" id="rT360">🌀<small>360</small></button><button class="rb sm" id="rTFlip">🔄<small>Сальто</small></button><button class="rb sm" id="rTGrab">✊<small>Грэб</small></button></div><button class="rb sm" id="rBoost">⚡<small>Буст</small></button><button class="rb sm" id="rJump">⤴<small>Прыжок</small></button><button class="rb sm" id="rTuck">🚀<small>Разгон</small></button><button class="rb sm" id="rBrake">✋<small>Тормоз</small></button></div>
+  <div class="rpad rright"><button class="rb sm" id="rBoost">⚡<small>Буст</small></button><button class="rb sm" id="rJump">⤴<small>Прыжок</small></button><button class="rb sm" id="rTuck">🚀<small>Разгон</small></button><button class="rb sm" id="rBrake">✋<small>Тормоз</small></button></div>
   <div class="pn" id="rBoostBar"><span>⚡</span><i><b id="rBoostF"></b></i></div>
   <div class="pn" id="rKeys"><div class="kh">⌨️ Клавиши <button id="rKeysX" title="Скрыть (H)">✕</button></div>
     <div><kbd>←</kbd><kbd>→</kbd> или <kbd>A</kbd><kbd>D</kbd> поворот</div><div><kbd>↑</kbd>/<kbd>W</kbd> разгон, в воздухе — грэб</div><div><kbd>↓</kbd>/<kbd>S</kbd> тормоз, в воздухе — сальто</div>
@@ -388,7 +388,7 @@ renderer.setPixelRatio(Math.min(QS[Q].pr,devicePixelRatio||1));
 renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.22;
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
 const scene=new THREE.Scene();
-scene.background=new THREE.Color(0xa9cdee);scene.fog=new THREE.Fog(0xa9cdee,360,1100);
+scene.background=new THREE.Color(0xa9cdee);scene.fog=new THREE.Fog(0xa9cdee,1400,4200);
 const camera=new THREE.PerspectiveCamera(50,1,.5,3000);
 camera.position.set(-40,150,255);
 const controls=new THREE.OrbitControls(camera,renderer.domElement);
@@ -1519,7 +1519,7 @@ function sky(){const h=minutes/60,W=WEATHER[weather];
   _hc.setRGB(SKY.dh.r*dayF+SKY.sh.r*twF+SKY.nh.r*nightF,SKY.dh.g*dayF+SKY.sh.g*twF+SKY.nh.g*nightF,SKY.dh.b*dayF+SKY.sh.b*twF+SKY.nh.b*nightF);
   const cl=W.cloud*(1-nightF*.7);_tc.lerp(grey,cl*.85*(dayF+twF*.5));_hc.lerp(grey,cl*.7*(dayF+twF*.5));
   if(MAP.warm){_tc.lerp(new THREE.Color(0x7a5a9e),.45*(1-nightF));_hc.lerp(new THREE.Color(0xf4b6b0),.5*(1-nightF))}
-  skyU.top.value.copy(_tc);skyU.hor.value.copy(_hc);scene.background.copy(_hc);scene.fog.color.copy(_hc);scene.fog.near=360*W.fog;scene.fog.far=1100*Math.max(W.fog,.6)*(1-nightF*.1);scene.fog.near=360*Math.max(W.fog,.6);
+  skyU.top.value.copy(_tc);skyU.hor.value.copy(_hc);scene.background.copy(_hc);scene.fog.color.copy(_hc);scene.fog.near=900+700*W.fog;scene.fog.far=2600+1600*W.fog;
   const a=Math.PI*(h-6.8)/11.4;_sd.set(Math.cos(a)*-.8,Math.sin(a)*.55+.04,.4).normalize();skyU.sunDir.value.copy(_sd);skyU.sunCol.value.setRGB(1,.9-.35*twF,.78-.5*twF).multiplyScalar((1-W.cloud*.85)*(1-nightF));
   const ctr=ride?ride.p:controls.target;sun.target.position.copy(ctr);
   if(nightF>.5){sun.position.copy(ctr).addScaledVector(_md,450);sun.color.setRGB(.62,.72,1);sun.intensity=.62*nightF*(1-W.cloud*.35)}
@@ -1719,7 +1719,7 @@ function rideIntro(R,opt){opt=opt||{};if(!R&&!opt.lift)return;setTool('look');hi
     <div class="gfx" style="grid-template-columns:1fr 1fr;margin:0 0 12px"><button data-g="ski" class="${gear==='ski'?'on':''}"><b>🎿 Лыжи</b><span>Точные повороты, палки для разгона</span></button><button data-g="board" class="${gear==='board'?'on':''}"><b>🏂 Сноуборд</b><span>Резвее в поворотах, круче трюки</span></button></div>
     <button class="pre-go" id="preGo">${gear==='board'?'🏂':'⛷️'} Поехали!</button>
     <button class="pre-alt" id="preAlt">Сменить трассу</button>
-    <div class="pre-hint">${coarse?'Левый палец рулит · на трамплине: веди палец — вращение, Разгон — грэб, Тормоз — сальто':'← → руль · ↑ разгон · ↓ тормоз · пробел прыжок · в воздухе ← → вращение, ↑ грэб, ↓ сальто · C камера'}</div>`;
+    <div class="pre-hint">${coarse?'Левый палец рулит · в прыжке: палец вбок — вращение, потяни вниз — сальто, держи Разгон — грэб (схватиться за доску)':'← → руль · ↑ разгон · ↓ тормоз · пробел прыжок · в воздухе ← → вращение, ↑ грэб, ↓ сальто · C камера'}</div>`;
   $('mPre').classList.add('show');
   $('preCard').querySelectorAll('[data-g]').forEach(b=>b.onclick=()=>{gear=b.dataset.g;try{localStorage.setItem('powderpeak-gear',gear)}catch(e){}rideIntro(R,opt)});
   $('preGo').onclick=()=>{$('mPre').classList.remove('show');paused=false;startRide(R,opt)};
@@ -1781,7 +1781,7 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
   const L=keys.l,Rt=keys.r,tuck=keys.tuck,brake=keys.brake,inp=thumb.on?thumb.v:(Rt?1:0)-(L?1:0),p=r.p;
   r.st+=(inp-r.st)*Math.min(1,dt*9);let sp=Math.hypot(r.vx,r.vz),skid=0;
   if(r.cd<=0&&r.crashT<=0){r.t+=dt;
-    if(r.air&&r.trick){r.spin+=inp*(r.board?8:7)*dt;if(brake)r.flip+=8.6*dt;
+    if(r.air&&r.trick){r.spin+=inp*(r.board?8:7)*dt;if(brake||(thumb.on&&thumb.vy>.45))r.flip+=8.6*dt;
       if(r.autoSpin>0){const a=Math.min(r.autoSpin,9*dt);r.spin+=a;r.autoSpin-=a}if(r.autoFlip>0){const a=Math.min(r.autoFlip,9.5*dt);r.flip+=a;r.autoFlip-=a}if(r.autoGrab)r.grabT=(r.grabT||0)+dt}else r.f-=r.st*((r.board?3.1:2.7)/(1+sp*.03))*dt*(r.air?.55:1);
     const fx=Math.sin(r.f),fz=Math.cos(r.f),lx=fz,lz=-fx;
     if(!r.air){const e=.8,gx=(heightAt(p.x+e,p.z)-heightAt(p.x-e,p.z))/(2*e),gz=(heightAt(p.x,p.z+e)-heightAt(p.x,p.z-e))/(2*e);
@@ -1838,7 +1838,7 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
     if(r.R&&!r.air){const q=r.R.sm[r.idx];if(Math.hypot(p.x-q.x,p.z-q.z)>60){r.farT=(r.farT||0)+dt;if(r.farT>2.5){r.farT=0;unstick(r,'↺ Вернули на трассу')}}else r.farT=0}
     r.warnT-=dt;
     if(!r.anchor||Math.hypot(p.x-r.anchor.x,p.z-r.anchor.z)>10){r.anchor={x:p.x,z:p.z};r.anchorT=0}else{r.anchorT+=dt;if(r.anchorT>30){r.anchor=null;unstick(r,'↺ Долго на одном месте — вернули на трассу')}}}
-  else if(r.crashT>0){r.crashT-=dt0;r.tumble+=dt*11;if(r.crashT<=0){r.tumble=0;unstick(r,'Поехали дальше!')}}
+  else if(r.crashT>0){camMode===2&&(r.fpCrash=1);r.crashT-=dt0;r.tumble+=dt*11;if(r.crashT<=0){r.tumble=0;unstick(r,'Поехали дальше!')}}
   r.sp=sp;r.skid=skid;
   blob.position.set(p.x,meshH(p.x,p.z)+.5,p.z);{const hgt=rider.position.y-blob.position.y;const k=clamp(1-hgt/8,.25,1);blob.scale.setScalar(.6+.6*k);blob.material.opacity=k}
   if(r.av&&r.cd<=0){const A=r.av;A.sp=Math.min(24,9+r.t*.28);A.gap=Math.min(48,A.gap+(sp-A.sp)*dt0);
@@ -1850,17 +1850,18 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
   // rider pose
   r.lean+=((r.st*clamp(sp/14,0,1)*.6)-r.lean)*Math.min(1,dt*8);
   const crouch=tuck?1:(brake?.45:clamp(.22+sp*.012,0,.55));
-  rider.position.copy(p);rider.position.y=Math.max(p.y,meshH(p.x,p.z))+.47;if(r.board)rider.rotation.set(r.tumble-r.lean*.9,r.f+Math.PI/2+r.spin,r.flip);else rider.rotation.set(r.tumble-r.flip,r.f+r.spin,-r.lean);pose(rider,{c:r.air&&tuck?.9:crouch,st:r.st,lean:r.lean,brake:brake&&!r.air,air:r.air,tuck,t:r.t,grab:r.air&&tuck,pole:tuck&&sp<6&&!r.air});
+  rider.position.copy(p);rider.position.y=Math.max(p.y,meshH(p.x,p.z))+.47+(r.tumble?.9:0);if(r.board)rider.rotation.set(r.tumble-r.lean*.9,r.f+Math.PI/2+r.spin,r.flip);else rider.rotation.set(r.tumble-r.flip,r.f+r.spin,-r.lean);pose(rider,{c:r.air&&tuck?.9:crouch,st:r.st,lean:r.lean,brake:brake&&!r.air,air:r.air,tuck,t:r.t,grab:r.air&&tuck,pole:tuck&&sp<6&&!r.air});
   // ghost of the best run
   if(ghost.visible){const gh=ghosts[r.key],k=r.t*10,i=Math.min(gh.length-2,Math.floor(k)),f=Math.min(1,k-i),a=gh[i],b=gh[i+1];ghost.position.set(a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f+.47,a[2]+(b[2]-a[2])*f);ghost.rotation.set(0,a[3]+(b[3]-a[3])*f,0);pose(ghost,{c:.4,st:0,lean:0,t:r.t})}
   // camera
-  const U=rider.userData,fp=camMode===2;U.torso.visible=!fp;U.legs.forEach(l=>l.visible=!fp);
+  const U=rider.userData,fp=camMode===2&&!(r.crashT>0);U.torso.visible=!fp;U.legs.forEach(l=>l.visible=!fp);
   const tyaw=sp>2.5?Math.atan2(r.vx,r.vz):r.f;let dy=tyaw-r.camYaw;while(dy>Math.PI)dy-=2*Math.PI;while(dy<-Math.PI)dy+=2*Math.PI;r.camYaw+=dy*Math.min(1,dt0*(fp?12:4));
   const cdx=Math.sin(fp?r.f:r.camYaw),cdz=Math.cos(fp?r.f:r.camYaw);
   if(fp){_hp.set(p.x+Math.sin(r.f)*.35,Math.max(p.y,meshH(p.x,p.z))+.47+(2.6-crouch*.45)*1.25,p.z+Math.cos(r.f)*.35);camera.position.copy(_hp);_look.set(p.x+cdx*12*RSC*2,p.y+.47+.3,p.z+cdz*12*RSC*2);camLook.copy(_look)}
-  else{const back=camMode===1?15:6.2,up=camMode===1?6.5:2.7;_cam.set(p.x-cdx*back,0,p.z-cdz*back);_cam.y=Math.max(p.y+.47+up,meshH(_cam.x,_cam.z)+1.6);
+  else{const cr=r.crashT>0,back=camMode===1?15:cr?11:6.2,up=camMode===1?6.5:cr?5:2.7;_cam.set(p.x-cdx*back,0,p.z-cdz*back);_cam.y=Math.max(p.y+.47+up,meshH(_cam.x,_cam.z)+1.6);
     camera.position.lerp(_cam,1-Math.exp(-dt0*7));_look.set(p.x+cdx*10,p.y+.47+1.4,p.z+cdz*10);camLook.lerp(_look,1-Math.exp(-dt0*12))}
   if(sp>24&&!fp){camera.position.x+=(Math.random()-.5)*(sp-24)*.012*RSC;camera.position.y+=(Math.random()-.5)*(sp-24)*.012*RSC}
+  {const gy=meshH(camera.position.x,camera.position.z)+(fp?.9:1.4);if(camera.position.y<gy)camera.position.y=gy;if(!fp){const minY=rider.position.y+.9;if(camera.position.y<minY)camera.position.y=minY}}
   camera.lookAt(camLook);if(fp)camera.rotateZ(-r.lean*.35);
   const fv=(innerWidth<innerHeight?66:52)+sp*.45;if(Math.abs(camera.fov-fv)>.3){camera.fov+=(fv-camera.fov)*.1;camera.updateProjectionMatrix()}
   updStreaks(dt0,sp);audioUpd(sp,skid);
@@ -1881,16 +1882,16 @@ addEventListener('keyup',e=>{const k=KEYMAP[e.key]||KEYMAP[(e.key||'').toLowerCa
 [['rL','l'],['rR','r'],['rTuck','tuck'],['rBrake','brake'],['rJump','jump'],['rBoost','boost']].forEach(([id,k])=>{const b=$(id);const on=e=>{e.preventDefault();keys[k]=true;b.classList.add('on');try{b.setPointerCapture(e.pointerId)}catch(_){}};const off=()=>{keys[k]=false;b.classList.remove('on')};
   b.addEventListener('pointerdown',on);b.addEventListener('pointerup',off);b.addEventListener('pointercancel',off);b.addEventListener('lostpointercapture',off);b.addEventListener('contextmenu',e=>e.preventDefault())});
 $('rExit').onclick=()=>{$('mRide').classList.remove('show');endRide()};
-const thumb={on:false,v:0,x0:0,id:null};
+const thumb={on:false,v:0,vy:0,x0:0,y0:0,id:null};
 {const z=$('rThumb'),k=$('rKnob');
- z.addEventListener('pointerdown',e=>{e.preventDefault();thumb.on=true;thumb.id=e.pointerId;thumb.x0=e.clientX;thumb.v=0;try{z.setPointerCapture(e.pointerId)}catch(_){}z.querySelector('span').style.opacity=0});
- z.addEventListener('pointermove',e=>{if(!thumb.on||e.pointerId!==thumb.id)return;const dx=e.clientX-thumb.x0;thumb.v=clamp(dx/55,-1,1);k.style.transform=`translateX(${thumb.v*42}px)`});
- const up=e=>{if(e.pointerId!==thumb.id)return;thumb.on=false;thumb.v=0;k.style.transform=''};z.addEventListener('pointerup',up);z.addEventListener('pointercancel',up);z.addEventListener('lostpointercapture',up)}
+ z.addEventListener('pointerdown',e=>{e.preventDefault();thumb.on=true;thumb.id=e.pointerId;thumb.x0=e.clientX;thumb.y0=e.clientY;thumb.v=0;thumb.vy=0;try{z.setPointerCapture(e.pointerId)}catch(_){}z.querySelector('span').style.opacity=0});
+ z.addEventListener('pointermove',e=>{if(!thumb.on||e.pointerId!==thumb.id)return;const dx=e.clientX-thumb.x0,dy=e.clientY-thumb.y0;thumb.v=clamp(dx/55,-1,1);thumb.vy=clamp(dy/55,-1,1);k.style.transform=`translate(${thumb.v*42}px,${thumb.vy*28}px)`});
+ const up=e=>{if(e.pointerId!==thumb.id)return;thumb.on=false;thumb.v=0;thumb.vy=0;k.style.transform=''};z.addEventListener('pointerup',up);z.addEventListener('pointercancel',up);z.addEventListener('lostpointercapture',up)}
 $('rReset').onclick=()=>{if(ride&&!ride.done&&ride.cd<=0&&ride.crashT<=0)unstick(ride,'↺ На трассе')};
 $('rKeysX').onclick=()=>{$('ride').classList.add('nokeys');try{localStorage.setItem('powderpeak-keys','0')}catch(_){}};$('rKeysShow').onclick=()=>{$('ride').classList.remove('nokeys');try{localStorage.setItem('powderpeak-keys','1')}catch(_){}};
 try{if(localStorage.getItem('powderpeak-keys')==='0')$('ride').classList.add('nokeys')}catch(_){}
 const autoT=k=>{if(!ride||!ride.air||!ride.trick)return;const r=ride;if(k==='spin'){r.autoSpin=(r.autoSpin||0)+(r.board?Math.PI:2*Math.PI)}if(k==='flip')r.autoFlip=(r.autoFlip||0)+2*Math.PI;if(k==='grab')r.autoGrab=true};
-[['rT360','spin'],['rTFlip','flip'],['rTGrab','grab']].forEach(([id,k])=>$(id).addEventListener('pointerdown',e=>{e.preventDefault();autoT(k)}));
+
 $('rCam').onclick=()=>{camMode=(camMode+1)%3;rideMsg('🎥 '+CAM_N[camMode],800);try{localStorage.setItem('powderpeak-cam',camMode)}catch(_){}rideHud()};
 $('rSnd').onclick=()=>{muted=!muted;try{localStorage.setItem('powderpeak-mute',muted?'1':'0')}catch(_){}if(!muted)audioInit();rideHud()};
 /* ================= snowcats (evening grooming) ================= */
