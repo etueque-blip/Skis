@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="ru"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Powder Peak — горнолыжный курорт в браузере</title>
+<meta name="description" content="Построй свой горнолыжный курорт: подъёмники, гондолы, трассы, отели. Катайся сам по своим трассам. Бесплатно, без установки, на телефоне и компьютере.">
+<meta property="og:title" content="Powder Peak — построй свой горнолыжный курорт">
+<meta property="og:description" content="Подъёмники, трассы, отели, ночное катание и спуск от первого лица. Бесплатно в браузере.">
+<meta property="og:image" content="assets/shot-day.jpg">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b1424">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<script>
+  // Opened from Telegram: go straight into the game and keep the launch data.
+  if (/tgWebApp/.test(location.hash + location.search)) location.replace('powder-peak.html' + location.search + location.hash);
+</script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Rubik:wght@400;500;700;800&display=swap">
+<style>
+/* Layout: one column of full-width bands; content capped at 1120px. */
+:root{
+  --night:#0b1424; --deep:#122440; --ice:#e8f3ff; --frost:#a9c3e0; --muted:#7f93b3;
+  --orange:#f97316; --sun:#fbbf24; --green:#22c55e; --blue:#3b82f6;
+  --card:rgba(255,255,255,.06); --line:rgba(255,255,255,.12);
+  --display:'Rubik',system-ui,sans-serif; --body:'Rubik',system-ui,sans-serif;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--night);color:var(--ice);font:400 17px/1.6 var(--body);-webkit-font-smoothing:antialiased}
+a{color:inherit}
+.wrap{max-width:1120px;margin:0 auto;padding-left:max(20px,env(safe-area-inset-left,0px));padding-right:max(20px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--display);line-height:1.08;text-wrap:balance;margin:0}
+h2{font-size:clamp(28px,4vw,42px);font-weight:800;letter-spacing:-.5px}
+.eyebrow{color:var(--orange);font-weight:700;font-size:13px;letter-spacing:1.2px;text-transform:uppercase}
+.btn{display:inline-flex;align-items:center;gap:10px;padding:16px 26px;border-radius:14px;font-weight:700;font-size:18px;text-decoration:none;border:0;cursor:pointer;transition:transform .15s,box-shadow .15s}
+.btn:hover{transform:translateY(-2px)}
+.btn:focus-visible{outline:3px solid var(--sun);outline-offset:3px}
+.btn-main{background:linear-gradient(180deg,#fb8a3c,#ea580c);color:#fff;box-shadow:0 10px 30px #f9731655,inset 0 -3px 0 #0003}
+.btn-ghost{background:var(--card);color:var(--ice);box-shadow:inset 0 0 0 1px var(--line)}
+
+/* header */
+header{position:sticky;top:env(safe-area-inset-top,0px);z-index:10;background:rgba(11,20,36,.82);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:11;background:var(--night)}
+.nav{display:flex;align-items:center;gap:20px;height:64px}
+.logo{display:flex;align-items:center;gap:10px;font-weight:800;font-size:20px;text-decoration:none}
+.logo img{width:34px;height:34px;border-radius:9px}
+.nav nav{display:flex;gap:22px;margin-left:auto;font-size:15px;color:var(--frost)}
+.nav nav a{text-decoration:none}.nav nav a:hover{color:#fff}
+.nav .btn{padding:10px 18px;font-size:15px}
+@media (max-width:760px){.nav nav{display:none}.nav .btn{margin-left:auto}}
+
+/* hero */
+.hero{position:relative;overflow:hidden;padding:64px 0 40px;background:radial-gradient(90% 70% at 75% 10%,#1f4a80 0,transparent 60%),linear-gradient(180deg,#10203a,var(--night))}
+.hero .wrap{display:grid;grid-template-columns:1.05fr 1fr;gap:48px;align-items:center}
+.hero h1{font-size:clamp(40px,6.4vw,72px);font-weight:800;letter-spacing:-1.5px;margin:12px 0 18px}
+.hero h1 em{font-style:normal;background:linear-gradient(90deg,#fde68a,#fb923c);-webkit-background-clip:text;background-clip:text;color:transparent}
+.hero p{color:var(--frost);font-size:19px;max-width:520px;margin:0 0 28px}
+.cta{display:flex;gap:12px;flex-wrap:wrap}
+.free{margin-top:16px;color:var(--muted);font-size:14px}
+.shot{position:relative;border-radius:18px;overflow:hidden;box-shadow:0 30px 80px #000a,0 0 0 1px var(--line);transform:rotate(1.5deg)}
+.shot img{display:block;width:100%;height:auto;aspect-ratio:16/9;object-fit:cover}
+.shot .tag{position:absolute;left:14px;bottom:14px;background:rgba(11,20,36,.85);padding:6px 12px;border-radius:10px;font-size:14px;font-weight:700}
+@media (max-width:860px){.hero .wrap{grid-template-columns:1fr}.shot{transform:none}}
+.snow{position:absolute;inset:0;pointer-events:none;background-image:radial-gradient(2px 2px at 20% 30%,#fff9 50%,transparent 51%),radial-gradient(1.5px 1.5px at 70% 20%,#fff8 50%,transparent 51%),radial-gradient(2px 2px at 40% 80%,#fff7 50%,transparent 51%),radial-gradient(1.5px 1.5px at 85% 65%,#fff9 50%,transparent 51%),radial-gradient(1px 1px at 55% 45%,#fff 50%,transparent 51%);background-size:320px 320px;animation:fall 14s linear infinite}
+@keyframes fall{to{background-position:60px 320px,-40px 320px,30px 320px,-20px 320px,50px 320px}}
+@media (prefers-reduced-motion:reduce){.snow{animation:none}.btn{transition:none}}
+
+/* trail-difficulty strip: the four piste colours used in the game */
+.piste{display:flex;gap:18px;flex-wrap:wrap;color:var(--frost);font-size:14px;margin-top:22px}
+.piste span{display:inline-flex;align-items:center;gap:6px}
+.dot{width:12px;height:12px;border-radius:50%}
+
+section{padding:80px 0}
+.feat{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:34px}
+.f{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:22px;min-width:0}
+.f .i{font-size:30px}
+.f h3{font-size:20px;margin:10px 0 6px}
+.f p{margin:0;color:var(--frost);font-size:15px}
+@media (max-width:900px){.feat{grid-template-columns:1fr 1fr}}
+@media (max-width:560px){.feat{grid-template-columns:1fr}}
+
+.ride{background:linear-gradient(180deg,var(--night),#0f1d33)}
+.ride .wrap{display:grid;grid-template-columns:1fr 1fr;gap:44px;align-items:center}
+.ride ul{list-style:none;padding:0;margin:18px 0 26px;display:grid;gap:10px}
+.ride li{display:flex;gap:12px;color:var(--frost)}
+.ride li b{color:#fff}
+kbd{display:inline-block;min-width:26px;text-align:center;padding:2px 7px;border-radius:7px;background:#ffffff14;box-shadow:inset 0 -2px 0 #0006;font:600 13px/1.6 var(--body);color:#fff}
+@media (max-width:860px){.ride .wrap{grid-template-columns:1fr}}
+
+.steps{counter-reset:s;display:grid;grid-template-columns:repeat(4,1fr);gap:18px;margin-top:30px}
+.steps div{position:relative;padding:22px 20px 20px;border-radius:16px;border:1px dashed var(--line)}
+.steps div::before{counter-increment:s;content:counter(s);position:absolute;top:-14px;left:18px;width:30px;height:30px;border-radius:50%;background:var(--orange);color:#fff;font-weight:800;display:grid;place-items:center}
+.steps h3{font-size:18px;margin:6px 0}
+.steps p{margin:0;color:var(--frost);font-size:15px}
+@media (max-width:900px){.steps{grid-template-columns:1fr 1fr;row-gap:28px}}
+@media (max-width:520px){.steps{grid-template-columns:1fr}}
+
+.gal{display:grid;grid-template-columns:2fr 1fr;grid-template-rows:auto auto;gap:14px;margin-top:30px}
+.gal figure{margin:0;border-radius:14px;overflow:hidden;position:relative;border:1px solid var(--line)}
+.gal img{display:block;width:100%;height:100%;object-fit:cover;aspect-ratio:16/9}
+.gal figure:first-child{grid-row:1/3}
+.gal figure:first-child img{aspect-ratio:auto;height:100%}
+.gal figcaption{position:absolute;left:10px;bottom:10px;background:rgba(11,20,36,.85);border-radius:8px;padding:4px 10px;font-size:13px;font-weight:700}
+@media (max-width:760px){.gal{grid-template-columns:1fr}.gal figure:first-child{grid-row:auto}.gal figure:first-child img{aspect-ratio:16/9}}
+
+.faq{display:grid;gap:10px;margin-top:26px;max-width:820px}
+details{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 20px}
+summary{cursor:pointer;font-weight:700;font-size:17px;list-style:none;display:flex;justify-content:space-between;gap:12px}
+summary::after{content:"+";color:var(--orange);font-size:22px;line-height:1}
+details[open] summary::after{content:"–"}
+details p{color:var(--frost);margin:10px 0 0}
+
+.final{text-align:center;background:radial-gradient(70% 90% at 50% 100%,#1f4a80,transparent 70%)}
+.final p{color:var(--frost);margin:12px auto 28px;max-width:520px}
+footer{border-top:1px solid var(--line);padding:28px 0;color:var(--muted);font-size:14px}
+footer .wrap{display:flex;gap:16px;flex-wrap:wrap;justify-content:space-between}
+</style></head>
+<body>
+<header><div class="wrap nav">
+  <a class="logo" href="#top"><img src="icon-192.png" alt="">Powder Peak</a>
+  <nav><a href="#features">Об игре</a><a href="#ride">Катание</a><a href="#how">Как играть</a><a href="#faq">Вопросы</a></nav>
+  <a class="btn btn-main" href="powder-peak.html">▶ Играть</a>
+</div></header>
+
+<main id="top">
+<section class="hero"><div class="snow"></div><div class="wrap">
+  <div>
+    <span class="eyebrow">Горнолыжный тайкун · бесплатно в браузере</span>
+    <h1>Построй свой <em>горнолыжный курорт</em></h1>
+    <p>Прокладывай трассы по настоящим склонам, ставь подъёмники и гондолы, строй отели и рестораны. А потом сам спустись по своей трассе.</p>
+    <div class="cta"><a class="btn btn-main" href="powder-peak.html">▶ Играть бесплатно</a><a class="btn btn-ghost" href="#install">📱 На телефон</a></div>
+    <div class="free">Без регистрации и установки · работает на телефоне и компьютере · прогресс сохраняется</div>
+    <div class="piste"><span><i class="dot" style="background:var(--green)"></i>Зелёные</span><span><i class="dot" style="background:var(--blue)"></i>Синие</span><span><i class="dot" style="background:#111827;box-shadow:0 0 0 1px #fff6"></i>Чёрные</span><span>◆◆ Эксперт</span></div>
+  </div>
+  <div class="shot"><img src="assets/shot-day.jpg" alt="Курорт днём: подъёмники, трассы, отель и база" width="1280" height="720"><span class="tag">☀️ Твой курорт днём</span></div>
+</div></section>
+
+<section id="features"><div class="wrap">
+  <span class="eyebrow">Что можно делать</span>
+  <h2>Целая гора в твоих руках</h2>
+  <div class="feat">
+    <div class="f"><div class="i">🚡</div><h3>Подъёмники</h3><p>Бугель для новичков, кресельный и быстрая гондола на вершину. Улучшай их, не сноси. Они иногда ломаются, и мастерская их чинит.</p></div>
+    <div class="f"><div class="i">⛷️</div><h3>Трассы по склону</h3><p>Рисуешь трассу точками, а цвет сам подсказывает крутизну. Новичкам нужны зелёные, экспертам — двойной ромб.</p></div>
+    <div class="f"><div class="i">🏨</div><h3>Отели и рестораны</h3><p>Шале, отель, кафе на горе, прокат, парковка, спасатели. У каждого здания есть своя польза для гостей.</p></div>
+    <div class="f"><div class="i">🌙</div><h3>День и ночь</h3><p>Закат, звёзды и луна. Повесь фонари, и гости будут кататься до 21:00.</p></div>
+    <div class="f"><div class="i">🌨️</div><h3>Погода</h3><p>Свежий снег приводит толпы, оттепель портит трассы, и тогда выручают снежные пушки. На каждый день есть прогноз.</p></div>
+    <div class="f"><div class="i">🏞️</div><h3>Расти дальше</h3><p>Покупай соседние участки, поднимай уровень курорта и открывай новые горы с большим стартовым капиталом.</p></div>
+  </div>
+</div></section>
+
+<section class="ride" id="ride"><div class="wrap">
+  <div class="shot" style="transform:rotate(-1.5deg)"><img src="assets/shot-ride.jpg" alt="Спуск по своей трассе: лыжник, слалом-ворота, база внизу" width="1280" height="720" loading="lazy"><span class="tag">⛷️ Спуск по своей трассе</span></div>
+  <div>
+    <span class="eyebrow">Режим «Кататься»</span>
+    <h2>Спустись сам по трассе, которую построил</h2>
+    <ul>
+      <li>🎿 <span><b>Честная физика:</b> канты держат в повороте, на резком вираже лыжи заносит</span></li>
+      <li>🚩 <span><b>Слалом-ворота:</b> пропустил — +2 секунды</span></li>
+      <li>👻 <span><b>Призрак рекорда</b> едет рядом и показывает, где ты быстрее</span></li>
+      <li>✈️ <span><b>Прыжки с бугров,</b> падения в лесу, следы на снегу и ветер в ушах</span></li>
+      <li>🎥 <span><b>Три камеры:</b> сзади, издалека и от первого лица</span></li>
+    </ul>
+    <p style="color:var(--frost);margin:0">На компьютере: <kbd>←</kbd> <kbd>→</kbd> поворот, <kbd>↑</kbd> разгон, <kbd>↓</kbd> тормоз, <kbd>Пробел</kbd> прыжок. На телефоне — большие кнопки на экране.</p>
+  </div>
+</div></section>
+
+<section id="how"><div class="wrap">
+  <span class="eyebrow">Как играть</span>
+  <h2>Четыре шага до первых гостей</h2>
+  <div class="steps">
+    <div><h3>Подъёмник</h3><p>Нажми у базы (жёлтый круг), потом выше по горе.</p></div>
+    <div><h3>Трасса</h3><p>От верхней станции ставь точки вниз и закончи у базы.</p></div>
+    <div><h3>Ресторан</h3><p>Голодные гости платят и становятся довольнее.</p></div>
+    <div><h3>Забери приз</h3><p>Задания слева сверху: выполнил, нажал «Забрать», получил деньги.</p></div>
+  </div>
+</div></section>
+
+<section style="padding-top:0"><div class="wrap">
+  <span class="eyebrow">Скриншоты</span>
+  <h2>Так выглядит курорт</h2>
+  <div class="gal">
+    <figure><img src="assets/shot-night.jpg" alt="Ночное катание: фонари вдоль трасс, светятся окна отеля" loading="lazy"><figcaption>🌙 Ночное катание</figcaption></figure>
+    <figure><img src="assets/shot-day.jpg" alt="Курорт днём сверху" loading="lazy"><figcaption>☀️ Днём</figcaption></figure>
+    <figure><img src="assets/shot-ride.jpg" alt="Спуск по трассе" loading="lazy"><figcaption>⛷️ Спуск</figcaption></figure>
+  </div>
+</div></section>
+
+<section id="faq" style="padding-top:20px"><div class="wrap">
+  <span class="eyebrow">Вопросы</span>
+  <h2>Коротко о главном</h2>
+  <div class="faq">
+    <details><summary>Это бесплатно?</summary><p>Да. Игра целиком бесплатная, без рекламы внутри и без регистрации.</p></details>
+    <details id="install"><summary>Как поставить на телефон?</summary><p>Android (Chrome): меню ⋮ → «Установить приложение». iPhone (Safari): «Поделиться» → «На экран „Домой“». Появится иконка, игра откроется на весь экран и будет работать даже без интернета.</p></details>
+    <details><summary>Где хранится прогресс?</summary><p>В твоём браузере на этом устройстве. Игра сохраняется сама после каждой постройки и в конце каждого дня.</p></details>
+    <details><summary>Тормозит на старом телефоне</summary><p>В меню ⚙ → «Графика» выбери «Низкую». Игра и сама снижает графику, если заметит, что стало тормозить.</p></details>
+    <details><summary>Можно играть в Телеграме?</summary><p>Да, игра умеет открываться как мини-приложение Telegram: на весь экран и с вибрацией при постройке.</p></details>
+  </div>
+</div></section>
+
+<section class="final"><div class="wrap">
+  <h2>Гора ждёт первых лыжников</h2>
+  <p>Начни с одного подъёмника и одной трассы — а дальше отели, гондолы и ночные спуски.</p>
+  <a class="btn btn-main" href="powder-peak.html">▶ Играть бесплатно</a>
+</div></section>
+</main>
+
+<footer><div class="wrap"><span>© Powder Peak · горнолыжный тайкун в браузере</span><span>Сделано на three.js</span></div></footer>
+<script>if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{})</script>
+</body></html>

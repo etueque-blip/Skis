@@ -1,0 +1,16 @@
+{
+  "name": "Powder Peak Tycoon",
+  "short_name": "Powder Peak",
+  "description": "3D-тайкун горнолыжного курорта: подъёмники, трассы, отели и гости.",
+  "lang": "ru",
+  "start_url": "powder-peak.html",
+  "scope": "./",
+  "display": "fullscreen",
+  "orientation": "any",
+  "background_color": "#0e1626",
+  "theme_color": "#0e1626",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
