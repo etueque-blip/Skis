@@ -765,11 +765,12 @@ function bCheck(type,x,z,rot){
   r.cut=cut;r.cost=T.cost+cut*10;
   return r;
 }
-const BL={stay:['Стандарт','Люкс','Делюкс','Президентский'],food:['Обычный','Уютный','Шеф-повар','Высокая кухня'],other:['Обычный','Улучшенный','Продвинутый','Топ']};
-const BLM=[1,1.6,2.4,3.6];// income multiplier per level
+const BL={stay:['Стандарт','Люкс','Делюкс','Сюит','Президентский'],food:['Обычный','Уютный','Шеф-повар','Гурмэ','Высокая кухня'],other:['Обычный','Улучшенный','Продвинутый','Премиум','Топ']};
+const MAXL=5;
+const BLM=[1,2,3.5,6,10];// income multiplier per level
 const lvlNames=b=>BT[b.type].guests?BL.stay:BT[b.type].food?BL.food:BL.other;
-const bMul=b=>BLM[(b.lvl||1)-1];
-const bUpCost=b=>Math.round(BT[b.type].cost*[1.2,2,3.5][(b.lvl||1)-1]/100)*100;
+const bMul=b=>BLM[Math.min(MAXL,b.lvl||1)-1];
+const bUpCost=b=>Math.round(BT[b.type].cost*[1.5,3,6,12][(b.lvl||1)-1]/100)*100;
 function decorateLevel(B){if(B.deco){B.g.remove(B.deco);B.deco=null}const L=B.lvl||1;if(L<2)return;const d=new THREE.Group(),T=BT[B.type],hw=B.fw/2,hd=B.fd/2,top=B.type==='hotel'?13.5:B.type==='parking'?1:6;
   // gold trim, flags, and for the top level a glowing roof sign
   const gold=new THREE.MeshPhongMaterial({color:0xfacc15,shininess:120,specular:0xffffff,emissive:0x5a4000});
@@ -777,11 +778,25 @@ function decorateLevel(B){if(B.deco){B.g.remove(B.deco);B.deco=null}const L=B.lv
     if(L>=3){const fl=new THREE.Mesh(new THREE.PlaneGeometry(1.1,.65),new THREE.MeshLambertMaterial({color:[0xdc2626,0x2563eb,0x16a34a,0xfacc15][(x>0)*2+(z>0)],side:THREE.DoubleSide}));fl.position.set(x+.55,top+2.6,z);fl.userData.flag=1;d.add(fl)}}
   const trim=new THREE.Mesh(new THREE.BoxGeometry(B.fw+.4,.18,B.fd+.4),gold);trim.position.y=.25;d.add(trim);
   if(L>=3&&T.guests){const ext=new THREE.Mesh(new THREE.BoxGeometry(B.fw*.6,2.2,B.fd*.6),mat(B.type==='hotel'?0xe9dcc4:0x8b5a2b));ext.position.y=top+.6;d.add(ext);for(let k=-1;k<=1;k++){const w=new THREE.Mesh(new THREE.PlaneGeometry(.9,1),winMat);w.position.set(k*B.fw*.18,top+.7,-B.fd*.3-.01);w.rotation.y=Math.PI;d.add(w)}}
-  if(L>=4){const st=label('✦ '+lvlNames(B)[3]+' ✦','#fde047',.13);st.position.y=top+4.5;d.add(st);const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:0xffd36b,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));glow.scale.set(14,14,1);glow.position.y=top+1;d.add(glow);
-    const pool=new THREE.Mesh(new THREE.BoxGeometry(4,.3,2.6),new THREE.MeshPhongMaterial({color:0x38bdf8,shininess:140,emissive:0x0c4a6e}));pool.position.set(hw+3,.15,0);d.add(pool)}
+  if(L>=4){const st=label('✦ '+lvlNames(B)[L-1]+' ✦','#fde047',.13);st.position.y=top+4.5;d.add(st);const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:0xffd36b,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));glow.scale.set(14,14,1);glow.position.y=top+1;d.add(glow);
+  }
+  if(L>=5){// pool with a deck, loungers and a steaming hot tub
+    const deck=new THREE.Mesh(new THREE.BoxGeometry(7.5,.3,5),mat(0x9a6b45));deck.position.set(hw+4.5,.15,0);d.add(deck);
+    const pool=new THREE.Mesh(new THREE.BoxGeometry(5,.32,3),new THREE.MeshPhongMaterial({color:0x38bdf8,shininess:150,specular:0xffffff,emissive:0x0c4a6e}));pool.position.set(hw+4.2,.2,-.4);d.add(pool);
+    const tub=new THREE.Mesh(new THREE.CylinderGeometry(.9,.9,.4,16),new THREE.MeshPhongMaterial({color:0x7dd3fc,emissive:0x0e7490}));tub.position.set(hw+7,.3,1.6);d.add(tub);tub.userData.steam=1;
+    for(const z of [1.8,-2.2])d.add(box(1.6,.25,.6,0xf8fafc,hw+2.2,.45,z));
+    // helipad
+    const pad=new THREE.Mesh(new THREE.CylinderGeometry(3,3,.2,24),mat(0x374151));pad.position.set(-hw-4.5,.12,0);d.add(pad);const hh=label('H','#fde047',.06);hh.position.set(-hw-4.5,.5,0);d.add(hh);
+    B.heli={t:Math.random()*40,pad:new THREE.Vector3(-hw-4.5,.2,0)}}
+  else B.heli=null;
   d.traverse(o=>{if(o.isMesh)o.castShadow=true});B.deco=d;B.g.add(d)}
-function upgradeBuilding(B){if((B.lvl||1)>=4)return;const c=bUpCost(B);if(money<c)return toast('Не хватает денег: нужно '+fmt(c),1);money-=c;day.build+=c;day.builtN++;addXP(30);B.lvl=(B.lvl||1)+1;B.cost+=c;decorateLevel(B);
-  B.g.scale.set(1,.01,1);grows.push({o:B.g,t:0});burst(new THREE.Vector3(B.x,B.y+8,B.z),'⬆ '+lvlNames(B)[B.lvl-1]);if(B.lvl===4)fireworks(B);toast(`⬆ ${BT[B.type].n}: ${lvlNames(B)[B.lvl-1]}! Доход ×${bMul(B)}`);showInfo(B);persist()}
+function makeHeli(){const g=new THREE.Group();g.add(box(1.6,1.3,3.2,0x1e293b,0,1,0),box(1.5,.8,1.4,0x7dd3fc,0,1.3,1.1),box(.3,.3,3,0x1e293b,0,1.1,-2.8),box(.08,.9,.6,0xfacc15,0,1.4,-4.2),box(.15,.15,2.2,0x94a3b8,-.7,.15,0),box(.15,.15,2.2,0x94a3b8,.7,.15,0));const rot=box(6,.05,.3,0x111827,0,1.85,0);g.add(rot);g.userData.rot=rot;g.traverse(o=>{if(o.isMesh)o.castShadow=true});scene.add(g);return g}
+function updHelis(dt){for(const B of buildings){const H=B.heli;if(!H)continue;H.t+=dt;const cyc=H.t%60;if(!H.m)H.m=makeHeli();const P=B.deco.localToWorld(H.pad.clone());let y=0,off=0;
+  if(cyc<8){off=(8-cyc)*14;y=(8-cyc)*4}else if(cyc<30){off=0;y=0}else if(cyc<38){off=(cyc-30)*14;y=(cyc-30)*4}else{H.m.visible=false;continue}
+  if(cyc>=8&&cyc<9&&!H.paid){H.paid=true;const v=Math.round(400*bMul(B)/10);money+=v;day.food+=v;B.earned+=v}if(cyc>=30)H.paid=false;
+  H.m.visible=true;H.m.position.set(P.x-off,P.y+y,P.z-off*.4);H.m.rotation.y=.4;H.m.userData.rot.rotation.y+=dt*(cyc>=8&&cyc<30?4:30)}}
+function upgradeBuilding(B){if((B.lvl||1)>=MAXL)return;const c=bUpCost(B);if(money<c)return toast('Не хватает денег: нужно '+fmt(c),1);money-=c;day.build+=c;day.builtN++;addXP(30);B.lvl=(B.lvl||1)+1;B.cost+=c;decorateLevel(B);
+  B.g.scale.set(1,.01,1);grows.push({o:B.g,t:0});burst(new THREE.Vector3(B.x,B.y+8,B.z),'⬆ '+lvlNames(B)[B.lvl-1]);if(B.lvl>=MAXL-1)fireworks(B);toast(`⬆ ${BT[B.type].n}: ${lvlNames(B)[B.lvl-1]}! Доход ×${bMul(B)}`);showInfo(B);persist()}
 // fireworks over a building
 const fw=[];function fireworks(B){for(let k=0;k<5;k++)setTimeout(()=>{const c=[0xf43f5e,0xfacc15,0x22d3ee,0xa78bfa,0x4ade80][k%5];const n=40,pos=new Float32Array(n*3),vel=[];const x=B.x+(Math.random()-.5)*10,y=B.y+22+Math.random()*8,z=B.z+(Math.random()-.5)*10;for(let i=0;i<n;i++){pos[i*3]=x;pos[i*3+1]=y;pos[i*3+2]=z;const a=Math.random()*6.28,e=Math.acos(2*Math.random()-1),sp=6+Math.random()*4;vel.push([Math.sin(e)*Math.cos(a)*sp,Math.cos(e)*sp,Math.sin(e)*Math.sin(a)*sp])}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));const pm=new THREE.Points(g,new THREE.PointsMaterial({color:c,size:1.4,map:glowTex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));pm.frustumCulled=false;scene.add(pm);fw.push({pm,vel,t:0});tone(400+k*120,.2,.1)},k*350)}
@@ -1042,7 +1057,7 @@ const QUESTS=[
   {t:'Построй 4 подъёмника',r:15000,tool:'lift',p:()=>[lifts.length,4]},
   {t:'Улучши шале или отель (Осмотр → здание → ⬆)',r:12000,tool:'look',ok:()=>buildings.some(b=>(b.lvl||1)>=2&&BT[b.type].guests)},
   {t:'Поставь турбо на подъёмник (Осмотр → подъёмник → ⚡)',r:8000,tool:'look',ok:()=>lifts.some(L=>L.turbo)},
-  {t:'Доведи здание до президентского уровня',r:60000,tool:'look',ok:()=>buildings.some(b=>(b.lvl||1)>=4)},
+  {t:'Доведи здание до президентского уровня',r:150000,tool:'look',ok:()=>buildings.some(b=>(b.lvl||1)>=MAXL)},
   {t:'Купи соседний участок земли',r:10000,tool:'land',ok:()=>owned.size>16},
   {t:'Повесь фонари на трассу (Осмотр → трасса → 💡)',r:8000,tool:'look',ok:()=>runs.some(r=>r.lit)},
   {t:'Поставь снежные пушки на трассу (Осмотр → трасса → ❄️)',r:6000,tool:'look',ok:()=>runs.some(r=>r.snow)},
@@ -1314,7 +1329,7 @@ function showInfo(o,live){
     ${T.food?`<div class="r"><span>Посетителей</span><b>${o.visits}</b></div>`:''}<div class="r"><span>Заработано</span><b>${fmt(o.earned)}</b></div><div class="r"><span>Содержание</span><b>$${T.upkeep}/день</b></div>`;
     if(live){$('iStats').innerHTML=h.replace(/^<h3>.*?<\/h3>/s,'');return}
     h=h.replace(/(<\/h3>)([\s\S]*)$/,'$1<div id="iStats">$2</div>');
-    if(lv<4){const c=bUpCost(o);h+=`<div class="cb"><button class="btn pri" id="iBUp" ${money>=c?'':'disabled'}>⬆ ${LN[lv]} · ${fmt(c)}</button></div><div class="r" style="display:block;line-height:1.35"><span>${T.guests?`Мест: ${Math.round(T.guests*bMul(o))} → ${Math.round(T.guests*BLM[lv])}, ночь дороже`:T.food?'Еда дороже, гости довольнее':'Работает лучше'}</span></div>`}else h+=`<div class="r"><span style="color:#fde047">✦ Максимальный уровень</span></div>`;
+    if(lv<MAXL){const c=bUpCost(o);h+=`<div class="cb"><button class="btn pri" id="iBUp" ${money>=c?'':'disabled'}>⬆ ${LN[lv]} · ${fmt(c)}</button></div><div class="r" style="display:block;line-height:1.35"><span>${T.guests?`Мест: ${Math.round(T.guests*bMul(o))} → ${Math.round(T.guests*BLM[lv])} · доход ×${bMul(o)} → ×${BLM[lv]}${lv===MAXL-1?' · бассейн и вертолёт для VIP':''}`:T.food?`Доход ×${bMul(o)} → ×${BLM[lv]}, гости довольнее`:`Доход ×${bMul(o)} → ×${BLM[lv]}`}</span></div>`}else h+=`<div class="r"><span style="color:#fde047">✦ Максимальный уровень</span></div>`;
   }
   h+=`<div class="cb"><button class="btn red" id="iDel">🧨 Снести</button></div>`;
   el.innerHTML=h;$('iX').onclick=hideInfo;$('iDel').onclick=()=>{setTool('del');selDel=o;refresh()};
@@ -1333,7 +1348,7 @@ function upgradeLift(L){const u=L._up;if(!u||money<u.cost)return;money-=u.cost;d
 function removeObj(o){
   if(o.kind==='lift'){o.queue.forEach(s=>leave(s));skiers.forEach(s=>{if(s.lift===o&&s.state==='lift'){s.mesh.visible=true;leave(s)}});scene.remove(o.g);lifts.splice(lifts.indexOf(o),1)}
   else if(o.kind==='run'){skiers.forEach(s=>{if(s.run===o&&s.state==='ski')leave(s)});scene.remove(o.g);runs.splice(runs.indexOf(o),1)}
-  else{skiers.forEach(s=>{if(s.eatAt===o&&s.state==='eat'){s.mesh.visible=true;decide(s)}});scene.remove(o.g);if(o.road)scene.remove(o.road);buildings.splice(buildings.indexOf(o),1)}
+  else{skiers.forEach(s=>{if(s.eatAt===o&&s.state==='eat'){s.mesh.visible=true;decide(s)}});scene.remove(o.g);if(o.heli&&o.heli.m)scene.remove(o.heli.m);if(o.road)scene.remove(o.road);buildings.splice(buildings.indexOf(o),1)}
   const refund=Math.round((o.cost||0)*.4);money+=refund;day.refund+=refund;toast(`Снесено: ${o.name} · +${fmt(refund)}`);hideInfo();refreshRings();persist();
 }
 function upScore(pts){const sm=curveSamples(pts);if(sm.length<3)return 0;const step=d2(sm[0],sm[1])||1,w=Math.max(1,Math.round(14/step));let sc=0,worst=1e9,wi=0;
@@ -2003,7 +2018,7 @@ function frame(now){
     }
   }
   {const t=now/1000,gw=Math.max(0,Math.sin(t*.13)*Math.sin(t*.37+1));gust=gw*gw*(WEATHER[weather].snow>0?1:.3)}
-  updCats(rdt*Math.max(1,speed));updFireworks(rdt);for(const B of buildings)if(B.deco)B.deco.children.forEach(o=>{if(o.userData.flag)o.rotation.y=Math.sin(performance.now()/300+o.position.x)*.4});camUpd(rdt);keyPan(rdt);updBursts(rdt);updSmoke(rdt);updCars(rdt*Math.max(1,speed));updSpray(rdt);if(ride)updRide(rdt);updGrows(rdt);updSprays(rdt*Math.max(1,speed));
+  updCats(rdt*Math.max(1,speed));updFireworks(rdt);updHelis(rdt*Math.max(1,speed));for(const B of buildings)if(B.deco)B.deco.children.forEach(o=>{if(o.userData.flag)o.rotation.y=Math.sin(performance.now()/300+o.position.x)*.4});camUpd(rdt);keyPan(rdt);updBursts(rdt);updSmoke(rdt);updCars(rdt*Math.max(1,speed));updSpray(rdt);if(ride)updRide(rdt);updGrows(rdt);updSprays(rdt*Math.max(1,speed));
   if(hoverReq&&((tool==='lift'&&liftA)||(tool==='run'&&runPts.length)||(tool==='build'&&bType&&!ghostAt)||tool==='trees')){const p=pickGround(hoverReq.x,hoverReq.y);hover=p?(tool==='build'||tool==='trees'?p:snap(p)):null;hoverReq=null;
     if(tool==='lift'||tool==='run')refresh();else drawPreview()}
   const sp=snowG.attributes.position.array,ctr=ride?ride.p:controls.target,cx=ctr.x,cz=ctr.z,cy=ctr.y;
