@@ -692,8 +692,8 @@ function makeRun(pts,name,w){w=w||3.9;
   R.step=R.len/(sm.length-1);
   const d=DIFF[R.diff];
   R.g.add(ribbon(sm,w,0xffffff,.97,false,getPisteTex(R.diff)));
-  for(const sd of [-1,1]){const off=[];for(let i=0;i<sm.length;i++){const a=sm[Math.max(0,i-1)],b=sm[Math.min(sm.length-1,i+1)];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;off.push({x:sm[i].x-tz*(w+.55)*sd,z:sm[i].z+tx*(w+.55)*sd,y:0})}
-    const bm=ribbon(off,.7,0xf6f9ff,1,false,bermTex);bm.position.y=.22;R.g.add(bm)}
+  for(const sd of [-1,1]){const off=[];for(let i=0;i<sm.length;i++){const a=sm[Math.max(0,i-1)],b=sm[Math.min(sm.length-1,i+1)];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;off.push({x:sm[i].x-tz*(w+.4)*sd,z:sm[i].z+tx*(w+.4)*sd,y:0})}
+    const bm=ribbon(off,.5,0xf6f9ff,1,false,bermTex);bm.position.y=.06;R.g.add(bm)}
   {const np=Math.floor(sm.length/12)*2,pg=new THREE.CylinderGeometry(.13,.13,2.2,5);pg.translate(0,1.1,0);const pm=new THREE.InstancedMesh(pg,mat(R.diff===0?0x16a34a:R.diff===1?0x2563eb:0x111827),Math.max(1,np));let k=0;
    for(let i=6;i<sm.length-1&&k<np;i+=12){const a=sm[i-1],b=sm[i+1];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;for(const sg of [1,-1]){const x=sm[i].x-tz*(w+.4)*sg,z=sm[i].z+tx*(w+.4)*sg;_m.makeTranslation(x,heightAt(x,z),z);pm.setMatrixAt(k++,_m)}}
    pm.count=k;pm.castShadow=true;R.g.add(pm)}
@@ -1551,6 +1551,7 @@ function spawnCar(dir){if(!ROAD.length||cars.length>=18)return;const g=new THREE
 function updCars(dt){for(let i=cars.length-1;i>=0;i--){const c=cars[i];c.d+=c.dir*c.v*dt;const end=c.dir<0?c.d<=0:c.d>=ROAD.len;
   const yaw=roadAt(c.d,c.dir<0?1:-1,c.g.position);c.g.rotation.y=yaw+(c.dir<0?Math.PI:0);if(end){scene.remove(c.g);cars.splice(i,1)}}}
 /* ================= ride mode v2: ski your own run ================= */
+const RSC=.32;// ride scale: rider metres -> world units
 let ride=null;const keys={};let camMode=0,muted=false,gear='ski';try{gear=localStorage.getItem('powderpeak-gear')||'ski'}catch(e){}
 try{muted=localStorage.getItem('powderpeak-mute')==='1';camMode=+(localStorage.getItem('powderpeak-cam')||0)||0}catch(e){}
 const CAM_N=['камера сзади','камера издалека','от первого лица'];
@@ -1588,18 +1589,19 @@ function pose(m,o){// o: {c crouch 0..1, st steer, lean, brake, air, tuck, t, sl
   U.arms.forEach((a,i)=>{const sd=i?1:-1;let rx=o.tuck?-1.25:-.38,rz=o.air?sd*.75:sd*.12;if(o.pole)rx+=Math.sin(o.t*9+(i?Math.PI:0))*.5;a.rotation.set(rx,0,rz);a.userData.pole.rotation.x=o.tuck?-1.1:.55});
   U.skis.forEach((s,i)=>{const sd=i?1:-1;s.position.x=(o.brake?.3:.18)*sd;s.rotation.y=o.brake?-.3*sd:0;s.rotation.z=-o.lean*.9})}
 // gates
-const gatePoleG=new THREE.CylinderGeometry(.07,.07,2.2,6).translate(0,1.1,0);
+const KS=.5;// kicker / gate size in world units for the small rider
+const gatePoleG=new THREE.CylinderGeometry(.05,.05,1.3,6).translate(0,.65+.45,0);
 function makeGates(R){const g=new THREE.Group(),list=[];const n=R.sm.length;let side=1;
-  for(let i=18;i<n-14;i+=24){const a=R.sm[i-1],b=R.sm[i+1];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const lx=-tz,lz=tx,w=2.5;
-    const cx=R.sm[i].x+lx*side*1.5,cz=R.sm[i].z+lz*side*1.5,col=side>0?0xdc2626:0x2563eb,fm=new THREE.MeshLambertMaterial({color:col,side:THREE.DoubleSide});
+  for(let i=18;i<n-14;i+=24){const a=R.sm[i-1],b=R.sm[i+1];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const lx=-tz,lz=tx,w=1.6;
+    const cx=R.sm[i].x+lx*side*1.2,cz=R.sm[i].z+lz*side*1.2,col=side>0?0xdc2626:0x2563eb,fm=new THREE.MeshLambertMaterial({color:col,side:THREE.DoubleSide});
     for(const s2 of [-1,1]){const x=cx+lx*w*s2,z=cz+lz*w*s2;const p=new THREE.Mesh(gatePoleG,fm);p.position.set(x,heightAt(x,z),z);p.castShadow=true;g.add(p)}
-    const fl=new THREE.Mesh(new THREE.PlaneGeometry(w*2,.7),fm);fl.position.set(cx,heightAt(cx,cz)+1.75,cz);fl.rotation.y=Math.atan2(tx,tz);g.add(fl);
+    const fl=new THREE.Mesh(new THREE.PlaneGeometry(w*2,.4),fm);fl.position.set(cx,heightAt(cx,cz)+1.5,cz);fl.rotation.y=Math.atan2(tx,tz);g.add(fl);
     list.push({i,x:cx,z:cz,lx,lz,w,ok:null,fm});side=-side}
-  const kick=[];for(let i=34;i<n-20;i+=48){const a=R.sm[i-2],b=R.sm[i+2];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const off=((i/48)|0)%2?-1.2:1.2,lx=-tz,lz=tx;
+  const kick=[];for(let i=26;i<n-14;i+=30){const a=R.sm[i-2],b=R.sm[i+2];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const off=((i/30)|0)%2?-1.0:1.0,lx=-tz,lz=tx;
     const cx=R.sm[i].x+lx*off,cz=R.sm[i].z+lz*off,cy=heightAt(cx,cz);
-    const sh=new THREE.Shape();sh.moveTo(-3,0);sh.lineTo(2.2,0);sh.lineTo(2.2,1.6);sh.quadraticCurveTo(-.5,.9,-3,0);const kg=new THREE.ExtrudeGeometry(sh,{depth:4.4,bevelEnabled:false});kg.translate(0,0,-2.2);kg.rotateY(-Math.PI/2);
+    const sh=new THREE.Shape();sh.moveTo(-3,0);sh.lineTo(2.2,0);sh.lineTo(2.2,1.6);sh.quadraticCurveTo(-.5,.9,-3,0);const kg=new THREE.ExtrudeGeometry(sh,{depth:4.4,bevelEnabled:false});kg.translate(0,0,-2.2);kg.rotateY(-Math.PI/2);kg.scale(KS,KS,KS);kg.translate(0,.45,0);
     const km=new THREE.Mesh(kg,new THREE.MeshLambertMaterial({color:0xf8fbff}));km.position.set(cx,cy-.1,cz);km.rotation.y=Math.atan2(tx,tz);km.castShadow=true;km.receiveShadow=true;g.add(km);
-    for(const sd of [-1,1]){const e=box(.12,.12,5.2,0x2563eb,0,0,0);e.position.set(cx+lx*2.25*sd,cy+.85,cz+lz*2.25*sd);e.rotation.set(-.3,Math.atan2(tx,tz),0);g.add(e)}
+    for(const sd of [-1,1]){const e=box(.07,.07,5.2*KS,0x2563eb,0,0,0);e.position.set(cx+lx*2.25*KS*sd,cy+.45+.85*KS,cz+lz*2.25*KS*sd);e.rotation.set(-.3,Math.atan2(tx,tz),0);g.add(e)}
     kick.push({x:cx,z:cz,tx,tz,lx,lz,used:false})}
   scene.add(g);return{g,list,kick}}
 // ski tracks in the snow
@@ -1615,12 +1617,12 @@ function updStreaks(dt,sp){slMat.opacity=ride?clamp((sp-15)/16,0,.55):0;if(slMat
 // snow spray
 const sprayN=420,sprayPos=new Float32Array(sprayN*3),sprayV=[];for(let i=0;i<sprayN;i++)sprayV.push({x:0,y:-999,z:0,vx:0,vy:0,vz:0,t:1});
 const sprayG=new THREE.BufferGeometry();sprayG.setAttribute('position',new THREE.BufferAttribute(sprayPos,3));
-const sprayPts=new THREE.Points(sprayG,new THREE.PointsMaterial({color:0xffffff,map:flakeTex,size:1.35,transparent:true,opacity:.9,depthWrite:false}));sprayPts.frustumCulled=false;scene.add(sprayPts);
+const sprayPts=new THREE.Points(sprayG,new THREE.PointsMaterial({color:0xffffff,map:flakeTex,size:.7,transparent:true,opacity:.9,depthWrite:false}));sprayPts.frustumCulled=false;scene.add(sprayPts);
 const PILE_N=500,pileGeo=new THREE.SphereGeometry(.55,8,5);pileGeo.scale(1.4,.38,.9);
 const piles=new THREE.InstancedMesh(pileGeo,new THREE.MeshLambertMaterial({color:0xf8fbff}),PILE_N);piles.count=0;piles.receiveShadow=true;piles.castShadow=true;piles.frustumCulled=false;scene.add(piles);let pileI=0,pileT=0;
 function addPile(x,z,yaw,sc){const y=heightAt(x,z)+.5;_m.makeRotationY(yaw);_m.scale(new THREE.Vector3(sc,sc,sc));_m.setPosition(x,y,z);piles.setMatrixAt(pileI%PILE_N,_m);pileI++;piles.count=Math.min(pileI,PILE_N);piles.instanceMatrix.needsUpdate=true}
-function emitSpray(p,vx,vy,vz){const q=sprayV.find(x=>x.t>=1);if(!q)return;q.x=p.x+(Math.random()-.5)*.6;q.y=p.y+.65;q.z=p.z+(Math.random()-.5)*.6;q.vx=vx;q.vy=vy;q.vz=vz;q.t=0}
-function updSpray(dt){for(let i=0;i<sprayN;i++){const q=sprayV[i];if(q.t<1){q.t+=dt/.7;q.vy-=12*dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.z+=q.vz*dt}sprayPos[i*3]=q.x;sprayPos[i*3+1]=q.t<1?q.y:-999;sprayPos[i*3+2]=q.z}sprayG.attributes.position.needsUpdate=true}
+function emitSpray(p,vx,vy,vz){const q=sprayV.find(x=>x.t>=1);if(!q)return;const k=ride?RSC*1.4:1;q.x=p.x+(Math.random()-.5)*.6*k;q.y=p.y+.5+.15*k;q.z=p.z+(Math.random()-.5)*.6*k;q.vx=vx*k;q.vy=vy*k;q.vz=vz*k;q.g=12*k;q.t=0}
+function updSpray(dt){for(let i=0;i<sprayN;i++){const q=sprayV[i];if(q.t<1){q.t+=dt/.7;q.vy-=(q.g||12)*dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.z+=q.vz*dt}sprayPos[i*3]=q.x;sprayPos[i*3+1]=q.t<1?q.y:-999;sprayPos[i*3+2]=q.z}sprayG.attributes.position.needsUpdate=true}
 // collisions
 let treeHash=null;
 function buildTreeHash(){treeHash=new Map();trees.concat(ROCKS).forEach(t=>{if(!t.on)return;const k=Math.floor(t.x/4)+','+Math.floor(t.z/4);(treeHash.get(k)||treeHash.set(k,[]).get(k)).push(t)})}
@@ -1647,7 +1649,7 @@ function freeProfile(L){const ys=[];const a={x:L.b.x+L.dir.x*6,z:L.b.z+L.dir.z*6
 function rideIntro(R,opt){opt=opt||{};if(!R&&!opt.lift)return;setTool('look');hideInfo();$('mRide').classList.remove('show');paused=true;
   const ys=R?R.sm.filter((_,i)=>i%2===0).map(p=>p.y):freeProfile(opt.lift);
   const len=R?R.len:Math.hypot(opt.lift.b.x-BASE.x,opt.lift.b.z-BASE.z),drop=R?R.vert:opt.lift.b.y-BASE.y,diff=R?R.diff:2;
-  const key=R?R.name:'free:'+opt.lift.name,pb=best[key],est=Math.round(len/(10+diff*2.4)+3);
+  const key=R?R.name:'free:'+opt.lift.name,pb=best[key],est=Math.round(len/((10+diff*2.4)*RSC)+3);
   const P=profilePath(ys,400,90,8);const [sx,sy]=P.pt(0);const D=DIFF[diff];
   const dotCol=['#22c55e','#3b82f6','#111827','#000'][diff];
   $('preCard').innerHTML=`<span class="pre-chip">${pb?`🏆 Рекорд · ${pb.toFixed(1)} с`:`Твой первый заезд · около ${est} с`}</span>
@@ -1675,7 +1677,7 @@ function startRide(R,opt){opt=opt||{};$('mRide').classList.remove('show');if(!R&
   ride={R,key,lift:opt.lift,p:new THREE.Vector3(s0.x,s0.y,s0.z),f:f0,vx:0,vz:0,vy:0,air:false,airT:0,airTot:0,lastG:s0.y,prevVy:0,t:0,cd:2.7,cdShown:4,top:0,crashes:0,crashT:0,tumble:0,slow:0,st:0,lean:0,idx:3,pen:0,
     gates:R?makeGates(R):null,spin:0,flip:0,score:0,combo:0,comboT:0,grabT:0,board:gear==='board',rec:[],recT:0,boost:1,boosting:false,anchor:null,anchorT:0,stuckT:0,warnT:0,jumpLatch:false,prevSpeed:speed,camYaw:f0,skid:0,sp:0};
   speed=1;document.querySelectorAll('#speed button').forEach(x=>x.classList.toggle('on',x.dataset.s==='1'));
-  setGear(rider,gear==='board');setGear(ghost,gear==='board');buildTreeHash();rider.visible=true;controls.enabled=false;document.body.classList.add('riding');$('ride').hidden=false;
+  rider.scale.setScalar(1.3*RSC);ghost.scale.setScalar(1.3*RSC);camera.near=.05;camera.updateProjectionMatrix();setGear(rider,gear==='board');setGear(ghost,gear==='board');buildTreeHash();rider.visible=true;controls.enabled=false;document.body.classList.add('riding');$('ride').hidden=false;
   trI=0;trLast=null;trG.setDrawRange(0,0);
   const gh=ghosts[key];ghost.visible=!!(gh&&gh.length>3);
   $('rName').innerHTML=R?`<b style="color:${DIFF[R.diff].css};min-width:0;font-size:14px">${DIFF[R.diff].s} ${R.name}</b>`:`<b style="min-width:0;font-size:14px">🏔️ Фрирайд</b>`;
@@ -1684,7 +1686,7 @@ function startRide(R,opt){opt=opt||{};$('mRide').classList.remove('show');if(!R&
    const mn=Math.min(...ys),mx=Math.max(...ys);ride.prof.mn=mn;ride.prof.mx=mx}
   thumb.on=false;thumb.v=0;$('rKnob').style.transform='';$('rThumb').querySelector('span').style.opacity=1;
   camera.position.set(ride.p.x-Math.sin(f0)*10,ride.p.y+5,ride.p.z-Math.cos(f0)*10);camLook.copy(ride.p)}
-function endRide(silent){if(!ride)return;const r=ride;ride=null;piles.count=0;pileI=0;if(r.gates)scene.remove(r.gates.g);rider.visible=false;ghost.visible=false;controls.enabled=true;document.body.classList.remove('riding');$('ride').hidden=true;
+function endRide(silent){if(!ride)return;const r=ride;ride=null;camera.near=.5;camera.updateProjectionMatrix();piles.count=0;pileI=0;if(r.gates)scene.remove(r.gates.g);rider.visible=false;ghost.visible=false;controls.enabled=true;document.body.classList.remove('riding');$('ride').hidden=true;
   for(const k in keys)keys[k]=false;document.querySelectorAll('.rb').forEach(b=>b.classList.remove('on'));audioUpd(0,0);slMat.opacity=0;trG.setDrawRange(0,0);
   const U=rider.userData;U.torso.visible=true;U.legs.forEach(l=>l.visible=true);
   if(silent)return;const e=r.R?r.R.sm[r.R.sm.length-1]:BASE;controls.target.set(e.x,e.y,e.z);camera.position.set(e.x-50,e.y+55,e.z+80);camera.fov=innerWidth<innerHeight?68:50;camera.updateProjectionMatrix()}
@@ -1715,7 +1717,7 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
   const L=keys.l,Rt=keys.r,tuck=keys.tuck,brake=keys.brake,inp=thumb.on?thumb.v:(Rt?1:0)-(L?1:0),p=r.p;
   r.st+=(inp-r.st)*Math.min(1,dt*9);let sp=Math.hypot(r.vx,r.vz),skid=0;
   if(r.cd<=0&&r.crashT<=0){r.t+=dt;
-    if(r.air){r.spin+=inp*(r.board?8:7)*dt;if(brake)r.flip+=8.6*dt}else r.f-=r.st*((r.board?3.1:2.7)/(1+sp*.03))*dt;
+    if(r.air&&r.trick){r.spin+=inp*(r.board?8:7)*dt;if(brake)r.flip+=8.6*dt}else r.f-=r.st*((r.board?3.1:2.7)/(1+sp*.03))*dt*(r.air?.55:1);
     const fx=Math.sin(r.f),fz=Math.cos(r.f),lx=fz,lz=-fx;
     if(!r.air){const e=.8,gx=(heightAt(p.x+e,p.z)-heightAt(p.x-e,p.z))/(2*e),gz=(heightAt(p.x,p.z+e)-heightAt(p.x,p.z-e))/(2*e);
       r.vx-=20*gx*dt;r.vz-=20*gz*dt;
@@ -1726,22 +1728,23 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
       r.vx=fx*vf+lx*vl;r.vz=fz*vf+lz*vl}
     else{r.vx*=1-.04*dt;r.vz*=1-.04*dt}
     sp=Math.hypot(r.vx,r.vz);if(sp>38){r.vx*=38/sp;r.vz*=38/sp;sp=38}r.top=Math.max(r.top,sp);
-    const nx=p.x+r.vx*dt,nz=p.z+r.vz*dt;
+    const nx=p.x+r.vx*dt*RSC,nz=p.z+r.vz*dt*RSC;
     if(!inBounds({x:nx,z:nz})){r.vx*=-.3;r.vz*=-.3;r.f+=Math.PI*.6;if(r.warnT<=0){rideMsg('🚧 Граница твоей земли');r.warnT=2}}
     else if(!r.air&&!(hitTree(p.x,p.z)||hitHouse(p.x,p.z))&&(hitTree(nx,nz)||hitHouse(nx,nz))){if(sp>7)crash(r);else{
       // slow: try to glance off to the side instead of stopping dead
-      let moved=false;for(const a of [.5,-.5,1,-1,1.5,-1.5]){const c=Math.cos(a),sn=Math.sin(a),vx=r.vx*c+r.vz*sn,vz=-r.vx*sn+r.vz*c,tx=p.x+vx*dt,tz=p.z+vz*dt;if(!hitTree(tx,tz)&&!hitHouse(tx,tz)){r.vx=vx*.85;r.vz=vz*.85;p.x=tx;p.z=tz;moved=true;break}}
+      let moved=false;for(const a of [.5,-.5,1,-1,1.5,-1.5]){const c=Math.cos(a),sn=Math.sin(a),vx=r.vx*c+r.vz*sn,vz=-r.vx*sn+r.vz*c,tx=p.x+vx*dt*RSC,tz=p.z+vz*dt*RSC;if(!hitTree(tx,tz)&&!hitHouse(tx,tz)){r.vx=vx*.85;r.vz=vz*.85;p.x=tx;p.z=tz;moved=true;break}}
       if(!moved){r.vx*=.3;r.vz*=.3}r.blockT=(r.blockT||0)+dt;if(r.blockT>.8)unstick(r,'↺ Объехали препятствие')}}
     else{p.x=nx;p.z=nz;r.blockT=Math.max(0,(r.blockT||0)-dt)}
     const g=heightAt(p.x,p.z);
-    if(!r.air){const vyG=(g-r.lastG)/dt;const jump=keys.jump&&!r.jumpLatch;if(jump)r.jumpLatch=true;if(!keys.jump)r.jumpLatch=false;
-      if(jump||(sp>12&&(vyG-r.prevVy)/dt<-95)){r.air=true;r.airT=0;r.vy=r.prevVy+(jump?8.5:0);p.y=g+.05;if(jump)tone(300,.08,.08)}
+    if(!r.air){const vyG=(g-r.lastG)/dt/RSC;const jump=keys.jump&&!r.jumpLatch;if(jump)r.jumpLatch=true;if(!keys.jump)r.jumpLatch=false;
+      if(jump||(sp>12&&(vyG-r.prevVy)/dt<-95)){r.air=true;r.airT=0;r.trick=!!jump;r.vy=r.prevVy+(jump?8.5:0);p.y=g+.02;if(jump)tone(300,.08,.08)}
       else{p.y=g;r.prevVy=clamp(vyG,-40,40)}}
-    if(r.air){r.airT+=dt;if(tuck)r.grabT=(r.grabT||0)+dt;r.vy-=30*dt;p.y+=r.vy*dt;if(p.y<=g){p.y=g;r.air=false;r.prevVy=0;if(r.airT>.25)r.airTot+=r.airT;
+    if(r.air){r.airT+=dt;if(tuck)r.grabT=(r.grabT||0)+dt;r.vy-=30*dt;p.y+=r.vy*dt*RSC;if(p.y<=g){p.y=g;r.air=false;r.prevVy=0;if(r.airT>.25)r.airTot+=r.airT;
       const vd=Math.atan2(r.vx,r.vz);let da=Math.abs(((vd-r.f)%(2*Math.PI)+3*Math.PI)%(2*Math.PI)-Math.PI);
       const half=r.board?Math.PI:2*Math.PI,turns=Math.round(r.spin/half),rem=Math.abs(r.spin-turns*half),dir=Math.sign(r.spin);r.spin=0;
-      const fl=Math.round(r.flip/(2*Math.PI)),frem=Math.abs(r.flip-fl*2*Math.PI);r.flip=0;
-      if((rem>.8||frem>.9)&&r.airT>.3){crash(r,frem>.9?'💥 Не докрутил сальто!':'💥 Не докрутил!');r.combo=0}
+      const fl=Math.round(r.flip/(2*Math.PI)),frem=Math.abs(r.flip-fl*2*Math.PI);r.lastFlip=r.flip;r.flip=0;
+      const spun=Math.abs(turns*half)+rem>1.5,flipped=fl>0||Math.abs(r.lastFlip||0)>1.6;
+      if(((spun&&rem>1.25)||(flipped&&frem>1.2))&&r.airT>.3){crash(r,flipped&&frem>1?'💥 Не докрутил сальто!':'💥 Не докрутил!');r.combo=0}
       else if(turns!==0||fl>0||(r.grabT>.25)){const deg=Math.abs(turns)*(r.board?180:360),parts=[];
         if(fl)parts.push(fl>1?'Дабл бэкфлип':'Бэкфлип');if(deg)parts.push((dir>0?'Фронтсайд ':'Бэксайд ')+deg);if(r.grabT>.25)parts.push(r.grabT>.7?'Тугой грэб':'Грэб');
         const mult=1+r.combo*.5,pts=Math.round((deg*1.5+fl*650+r.grabT*320+r.airT*120)*mult);r.score+=pts;r.combo++;r.comboT=8;
@@ -1750,7 +1753,7 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
       if(r.crashT>0){}else if(r.airT>.35&&sp>6&&da>1.1)crash(r,'💥 Неудачное приземление!');else if(r.airT>.55&&!turns){rideMsg(`✈ ${r.airT.toFixed(1)} с в воздухе!`,900);for(let k=0;k<14;k++)emitSpray(p,(Math.random()-.5)*6,2+Math.random()*3,(Math.random()-.5)*6)}}}
     r.lastG=g;
     if(r.comboT>0){r.comboT-=dt;if(r.comboT<=0)r.combo=0}
-    if(r.gates&&!r.air)for(const K of r.gates.kick){if(K.used)continue;const dx=p.x-K.x,dz=p.z-K.z,al=dx*K.tx+dz*K.tz,lat=dx*K.lx+dz*K.lz;if(Math.abs(lat)<2.4&&al>-.5&&al<2.6&&sp>4){K.used=true;r.air=true;r.airT=0;r.vy=9+sp*.34;p.y+=.3;tone(420,.1,.1);for(let k=0;k<18;k++)emitSpray(p,(Math.random()-.5)*5,2+Math.random()*3,(Math.random()-.5)*5);break}}
+    if(r.gates&&!r.air)for(const K of r.gates.kick){if(K.used)continue;const dx=p.x-K.x,dz=p.z-K.z,al=dx*K.tx+dz*K.tz,lat=dx*K.lx+dz*K.lz;if(Math.abs(lat)<2.4*KS&&al>-.5*KS&&al<2.6*KS&&sp>4){K.used=true;r.air=true;r.airT=0;r.trick=true;r.vy=9+sp*.34;p.y+=.12;tone(420,.1,.1);for(let k=0;k<18;k++)emitSpray(p,(Math.random()-.5)*5,2+Math.random()*3,(Math.random()-.5)*5);break}}
     // progress along the run, gates, finish
     if(r.R){const sm=r.R.sm;let bi=r.idx,bd=1e9;for(let i=Math.max(0,r.idx-6);i<Math.min(sm.length,r.idx+30);i++){const d=(sm[i].x-p.x)**2+(sm[i].z-p.z)**2;if(d<bd){bd=d;bi=i}}if(bi>r.idx)r.idx=bi;
       let passed=0;for(const G of r.gates.list){if(G.ok===null&&r.idx>=G.i){const d=(p.x-G.x)*G.lx+(p.z-G.z)*G.lz;if(Math.abs(d)<=G.w+.6){G.ok=true;G.fm.color.setHex(0x22c55e);tone(990,.09,.1)}else{G.ok=false;r.pen+=2;G.fm.color.setHex(0x64748b);rideMsg('🚩 Ворота пропущены: +2 с',1000);tone(200,.2,.12)}}if(G.ok)passed++}
@@ -1759,8 +1762,8 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
     else if(r.t>2&&Math.hypot(p.x-BASE.x,p.z-BASE.z)<24){finishRide();return}
     // effects: spray, tracks, record ghost
     if(!r.air&&sp>4){const n=Math.min(10,Math.round(skid/4+(brake?5:0)+sp*.08));for(let k=0;k<n;k++)emitSpray(p,-r.vx*.15+lx*inp*5+(Math.random()-.5)*2,1.2+Math.random()*2.2,-r.vz*.15+lz*inp*5+(Math.random()-.5)*2)}
-    pileT-=dt;if(!r.air&&sp>6&&(skid>7||Math.abs(r.st)>.55||brake)&&pileT<=0){pileT=.05;const side=inp?Math.sign(inp):(Math.random()<.5?-1:1),o=1.25;addPile(p.x+lx*side*o+(Math.random()-.5)*.4,p.z+lz*side*o+(Math.random()-.5)*.4,r.f,clamp(.5+skid/60+(brake?.4:0),.5,1.4))}
-    if(!r.air&&sp>1){const s=.3,a={x:p.x-lx*s,y:heightAt(p.x-lx*s,p.z-lz*s)+.5,z:p.z-lz*s},b={x:p.x+lx*s,y:heightAt(p.x+lx*s,p.z+lz*s)+.5,z:p.z+lz*s};if(trLast&&Math.hypot(a.x-trLast[0].x,a.z-trLast[0].z)>.6){addTrack(trLast[0],a);addTrack(trLast[1],b);trLast=[a,b]}else if(!trLast)trLast=[a,b]}else trLast=null;
+    pileT-=dt;if(!r.air&&sp>6&&(skid>7||Math.abs(r.st)>.55||brake)&&pileT<=0){pileT=.05;const side=inp?Math.sign(inp):(Math.random()<.5?-1:1),o=1.25*RSC;addPile(p.x+lx*side*o+(Math.random()-.5)*.15,p.z+lz*side*o+(Math.random()-.5)*.15,r.f,clamp(.5+skid/60+(brake?.4:0),.5,1.4)*RSC*1.3)}
+    if(!r.air&&sp>1){const s=.3*RSC,a={x:p.x-lx*s,y:heightAt(p.x-lx*s,p.z-lz*s)+.5,z:p.z-lz*s},b={x:p.x+lx*s,y:heightAt(p.x+lx*s,p.z+lz*s)+.5,z:p.z+lz*s};if(trLast&&Math.hypot(a.x-trLast[0].x,a.z-trLast[0].z)>.6){addTrack(trLast[0],a);addTrack(trLast[1],b);trLast=[a,b]}else if(!trLast)trLast=[a,b]}else trLast=null;
     r.recT+=dt;if(r.recT>=.1){r.recT=0;r.rec.push([+p.x.toFixed(1),+p.y.toFixed(1),+p.z.toFixed(1),+r.f.toFixed(2)])}
     if(!r.air&&sp<3.2&&!brake){const k=(3.2-sp)*2.2*dt;r.vx+=Math.sin(r.f)*k;r.vz+=Math.cos(r.f)*k}
     if(sp<1.2&&!brake&&!r.air){r.stuckT+=dt;if(r.stuckT>1.6)unstick(r,'↺ Подтолкнули — едем дальше')}else r.stuckT=0;
@@ -1779,10 +1782,10 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
   const U=rider.userData,fp=camMode===2;U.torso.visible=!fp;U.legs.forEach(l=>l.visible=!fp);
   const tyaw=sp>2.5?Math.atan2(r.vx,r.vz):r.f;let dy=tyaw-r.camYaw;while(dy>Math.PI)dy-=2*Math.PI;while(dy<-Math.PI)dy+=2*Math.PI;r.camYaw+=dy*Math.min(1,dt0*(fp?12:4));
   const cdx=Math.sin(fp?r.f:r.camYaw),cdz=Math.cos(fp?r.f:r.camYaw);
-  if(fp){_hp.set(p.x+Math.sin(r.f)*.35,p.y+(2.6-crouch*.45)*1.3,p.z+Math.cos(r.f)*.35);camera.position.copy(_hp);_look.set(p.x+cdx*12,p.y+.6,p.z+cdz*12);camLook.copy(_look)}
-  else{const back=camMode===1?18:10.5,up=camMode===1?9:5.2;_cam.set(p.x-cdx*back,0,p.z-cdz*back);_cam.y=Math.max(p.y+up,heightAt(_cam.x,_cam.z)+2.2);
-    camera.position.lerp(_cam,1-Math.exp(-dt0*7));_look.set(p.x+cdx*9,p.y+.8,p.z+cdz*9);camLook.lerp(_look,1-Math.exp(-dt0*12))}
-  if(sp>24&&!fp){camera.position.x+=(Math.random()-.5)*(sp-24)*.012;camera.position.y+=(Math.random()-.5)*(sp-24)*.012}
+  if(fp){_hp.set(p.x+Math.sin(r.f)*.35*RSC,p.y+.47+(2.6-crouch*.45)*1.3*RSC,p.z+Math.cos(r.f)*.35*RSC);camera.position.copy(_hp);_look.set(p.x+cdx*12*RSC*2,p.y+.47+.3,p.z+cdz*12*RSC*2);camLook.copy(_look)}
+  else{const back=(camMode===1?18:10.5)*RSC*1.1,up=(camMode===1?9:5.2)*RSC*1.1;_cam.set(p.x-cdx*back,0,p.z-cdz*back);_cam.y=Math.max(p.y+.47+up,heightAt(_cam.x,_cam.z)+1.1);
+    camera.position.lerp(_cam,1-Math.exp(-dt0*7));_look.set(p.x+cdx*9*RSC*1.1,p.y+.47+.8*RSC,p.z+cdz*9*RSC*1.1);camLook.lerp(_look,1-Math.exp(-dt0*12))}
+  if(sp>24&&!fp){camera.position.x+=(Math.random()-.5)*(sp-24)*.012*RSC;camera.position.y+=(Math.random()-.5)*(sp-24)*.012*RSC}
   camera.lookAt(camLook);if(fp)camera.rotateZ(-r.lean*.35);
   const fv=(innerWidth<innerHeight?72:60)+sp*.55;if(Math.abs(camera.fov-fv)>.3){camera.fov+=(fv-camera.fov)*.1;camera.updateProjectionMatrix()}
   updStreaks(dt0,sp);audioUpd(sp,skid);
