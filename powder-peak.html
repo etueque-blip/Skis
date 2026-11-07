@@ -1504,9 +1504,9 @@ const SN=QS[Q].snow,snowPos=new Float32Array(SN*3);for(let i=0;i<SN;i++){snowPos
 const snowG=new THREE.BufferGeometry();snowG.setAttribute('position',new THREE.BufferAttribute(snowPos,3));
 const flakeTex=(()=>{const cv=document.createElement('canvas');cv.width=cv.height=32;const g=cv.getContext('2d');const gr=g.createRadialGradient(16,16,0,16,16,16);gr.addColorStop(0,'rgba(255,255,255,1)');gr.addColorStop(.45,'rgba(255,255,255,.85)');gr.addColorStop(1,'rgba(255,255,255,0)');g.fillStyle=gr;g.fillRect(0,0,32,32);return new THREE.CanvasTexture(cv)})();
 const snow=new THREE.Points(snowG,new THREE.PointsMaterial({color:0xffffff,map:flakeTex,size:1.15,transparent:true,opacity:.9,depthWrite:false}));snow.frustumCulled=false;scene.add(snow);
-const SKY={dt:new THREE.Color(0x3d7fd0),dh:new THREE.Color(0xd4e6f7),st:new THREE.Color(0x3a4a86),sh:new THREE.Color(0xf6a06a),nt:new THREE.Color(0x03060f),nh:new THREE.Color(0x101a33)};
+const SKY={dt:new THREE.Color(0x3d7fd0),dh:new THREE.Color(0xd4e6f7),st:new THREE.Color(0x3a4a86),sh:new THREE.Color(0xf6a06a),nt:new THREE.Color(0x0b1838),nh:new THREE.Color(0x2c3f6e)};
 const grey=new THREE.Color(0xb8c2cf),_sd=new THREE.Vector3(),_md=new THREE.Vector3(.45,.75,-.4).normalize(),_tc=new THREE.Color(),_hc=new THREE.Color(),_w=new THREE.Color(0xffffff);
-const hemiDay=new THREE.Color(0xd6e6ff),hemiNight=new THREE.Color(0x46588f),winDay=new THREE.Color(0x8fa7bf),winNight=new THREE.Color(0xffd27a);
+const hemiDay=new THREE.Color(0xd6e6ff),hemiNight=new THREE.Color(0x8ea6e0),winDay=new THREE.Color(0x8fa7bf),winNight=new THREE.Color(0xffd27a);
 // stars + moon
 const starG=new THREE.BufferGeometry();{const a=[];for(let k=0;k<900;k++){const u=Math.random()*6.283,v=Math.acos(1-Math.random()*.95);a.push(Math.cos(u)*Math.sin(v)*1300,Math.cos(v)*1300,Math.sin(u)*Math.sin(v)*1300)}starG.setAttribute('position',new THREE.Float32BufferAttribute(a,3))}
 const stars=new THREE.Points(starG,new THREE.PointsMaterial({color:0xffffff,size:2,sizeAttenuation:false,transparent:true,opacity:0,depthWrite:false,fog:false}));stars.frustumCulled=false;scene.add(stars);
@@ -1519,13 +1519,13 @@ function sky(){const h=minutes/60,W=WEATHER[weather];
   _hc.setRGB(SKY.dh.r*dayF+SKY.sh.r*twF+SKY.nh.r*nightF,SKY.dh.g*dayF+SKY.sh.g*twF+SKY.nh.g*nightF,SKY.dh.b*dayF+SKY.sh.b*twF+SKY.nh.b*nightF);
   const cl=W.cloud*(1-nightF*.7);_tc.lerp(grey,cl*.85*(dayF+twF*.5));_hc.lerp(grey,cl*.7*(dayF+twF*.5));
   if(MAP.warm){_tc.lerp(new THREE.Color(0x7a5a9e),.45*(1-nightF));_hc.lerp(new THREE.Color(0xf4b6b0),.5*(1-nightF))}
-  skyU.top.value.copy(_tc);skyU.hor.value.copy(_hc);scene.background.copy(_hc);scene.fog.color.copy(_hc);scene.fog.near=360*W.fog;scene.fog.far=1100*W.fog*(1-nightF*.25);
+  skyU.top.value.copy(_tc);skyU.hor.value.copy(_hc);scene.background.copy(_hc);scene.fog.color.copy(_hc);scene.fog.near=360*W.fog;scene.fog.far=1100*Math.max(W.fog,.6)*(1-nightF*.1);scene.fog.near=360*Math.max(W.fog,.6);
   const a=Math.PI*(h-6.8)/11.4;_sd.set(Math.cos(a)*-.8,Math.sin(a)*.55+.04,.4).normalize();skyU.sunDir.value.copy(_sd);skyU.sunCol.value.setRGB(1,.9-.35*twF,.78-.5*twF).multiplyScalar((1-W.cloud*.85)*(1-nightF));
   const ctr=ride?ride.p:controls.target;sun.target.position.copy(ctr);
-  if(nightF>.5){sun.position.copy(ctr).addScaledVector(_md,450);sun.color.setRGB(.62,.72,1);sun.intensity=.32*nightF*(1-W.cloud*.6)}
+  if(nightF>.5){sun.position.copy(ctr).addScaledVector(_md,450);sun.color.setRGB(.62,.72,1);sun.intensity=.62*nightF*(1-W.cloud*.35)}
   else{const sd=_sd.y<.08?_sd.clone().setY(.08).normalize():_sd;sun.position.copy(ctr).addScaledVector(sd,450);sun.color.setRGB(1,.94-.3*twF-(MAP.warm?.12:0),.84-.48*twF-(MAP.warm?.22:0));sun.intensity=(.15+1.05*dayF+.35*twF)*W.sunI*(1-nightF)}
-  hemi.color.copy(hemiDay).lerp(hemiNight,nightF);if(MAP.warm)hemi.color.lerp(new THREE.Color(0xffb8c4),.55*(1-nightF));hemi.intensity=(.5*dayF+.34*twF+.2*nightF)+.2*W.cloud*dayF;
-  renderer.toneMappingExposure=1.22+nightF*.25;
+  hemi.color.copy(hemiDay).lerp(hemiNight,nightF);if(MAP.warm)hemi.color.lerp(new THREE.Color(0xffb8c4),.55*(1-nightF));hemi.intensity=(.5*dayF+.38*twF+.5*nightF)+.2*W.cloud*dayF+.12*W.cloud*nightF;
+  renderer.toneMappingExposure=1.22+nightF*.45;
   winMat.color.copy(winDay).lerp(winNight,Math.max(nightF,twF*.8,.15));
   const lampOn=Math.max(nightF,twF*.65);lampGlowMat.opacity=lampOn;lampPoolMat.opacity=lampOn*.55;
   stars.material.opacity=nightF*(1-W.cloud*.9);stars.position.copy(camera.position);
