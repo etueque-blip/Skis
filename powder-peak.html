@@ -331,10 +331,10 @@ let save=null;
 try{save=JSON.parse(localStorage.getItem(SAVE_KEY)||'null')||(RESORT===1?JSON.parse(localStorage.getItem('powderpeak-v1')||'null'):null)}catch(e){}
 let seed=save&&save.seed||((Math.random()*1e6)|0);
 const MAPS={
-  alps:{n:'Альпы',i:'🏔️',d:'Классика: пологая долина, крутые вершины. Есть трассы любой сложности.',amp:150,pow:1.9,fr:.0075,det:12},
-  hills:{n:'Пологие холмы',i:'🌄',d:'Мягкие склоны, легко строить. Много зелёных и синих трасс.',amp:88,pow:1.35,fr:.0058,det:7},
-  peak:{n:'Высокий пик',i:'⛰️',d:'Огромный перепад и крутые кулуары. Для чёрных трасс и экспертов.',amp:215,pow:2.25,fr:.009,det:15},
-  dusk:{n:'Розовый закат',i:'🌅',d:'Широкие плавные склоны под тёплым закатным небом. Для красивых спусков.',amp:125,pow:1.6,fr:.0052,det:9,warm:1}};
+  alps:{n:'Альпы',i:'🏔️',d:'Классика: долина с замёрзшим озером, крутые вершины. Есть трассы любой сложности.',amp:150,pow:1.9,fr:.0075,det:12,lake:1,shape:'alps',tree:.47,snow:[.93,.95,1]},
+  hills:{n:'Пологие холмы',i:'🌄',d:'Волнистые холмы и густой лес. Легче всего строить — идеально для роскошного курорта.',amp:70,pow:1.2,fr:.0058,det:6,shape:'hills',tree:.46,snow:[.96,.97,.99],easy:1},
+  peak:{n:'Высокий пик',i:'⛰️',d:'Одна огромная скалистая вершина посередине, мало леса. Для чёрных трасс и экспертов.',amp:150,pow:2.25,fr:.009,det:15,shape:'peak',tree:.58,snow:[.9,.93,.99]},
+  dusk:{n:'Розовый закат',i:'🌅',d:'Огромная чаша-цирк: хребты стоят полукругом вокруг долины. Тёплое закатное небо.',amp:125,pow:1.6,fr:.0052,det:9,warm:1,shape:'bowl',tree:.5,snow:[.99,.94,.95]}};
 const MAP=MAPS[save&&save.map]||MAPS.alps,MAPK=Object.keys(MAPS).find(k=>MAPS[k]===MAP);
 
 /* ================= terrain ================= */
@@ -345,23 +345,27 @@ function rfbm(x,z){let s=0,a=.5,f=1,n=0,w=1;for(let k=0;k<5;k++){let r=1-Math.ab
 const S=260,H=S/2;
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
 const sstep=(a,b,x)=>{const t=clamp((x-a)/(b-a),0,1);return t*t*(3-2*t)};
-const LAKE={x:-78,z:96,r:17};
+const LAKE=MAP.lake?{x:-78,z:96,r:17}:{x:-9999,z:-9999,r:0};
 function rawHeight(x,z){
   const t=clamp((H-z)/S,0,1);
   const m=Math.pow(t,MAP.pow)*sstep(.02,.3,t);
   const lat=1-.35*Math.min(1,x*x/(H*H));
   const r=rfbm(x*MAP.fr+3.1,z*MAP.fr+5.7);
-  return MAP.amp*m*lat*(.5+.7*r)+MAP.det*(fbm(x*.022,z*.022)-.5)*(.25+t)+2*(fbm(x*.07,z*.07,3)-.5)*t+2*fbm(x*.05,z*.05,2);
+  let h=MAP.amp*m*lat*(.5+.7*r);
+  if(MAP.shape==='hills'){h=MAP.amp*m*(.55+.45*fbm(x*.011,z*.011,4))+18*sstep(.05,.5,t)*(fbm(x*.02+7,z*.02,3))}
+  else if(MAP.shape==='peak'){const d=Math.hypot(x*.9,(z+70)*1.05),a=Math.atan2(z+70,x);const ridge=.75+.25*Math.abs(Math.sin(a*4+.5));h=h*.55+215*Math.pow(Math.max(0,1-d/185),1.55)*ridge*sstep(.04,.35,t)+20*rfbm(x*.02,z*.02)*sstep(.1,.6,t)}
+  else if(MAP.shape==='bowl'){const sd=Math.min(1,Math.abs(x)/H),ring=Math.pow(sd,1.6)*.75+Math.pow(t,1.5);h=MAP.amp*sstep(.02,.3,t)*ring*(.55+.6*r)}
+  return h+MAP.det*(fbm(x*.022,z*.022)-.5)*(.25+t)+2*(fbm(x*.07,z*.07,3)-.5)*t+2*fbm(x*.05,z*.05,2);
 }
 let LAKE_Y=0;
 function heightAt(x,z){
   let h=rawHeight(x,z);
   // flatter village valley around the lodge
   const vd=Math.hypot((x)/1.6,z-110);if(vd<60){const f=sstep(60,25,vd);h=h+(rawHeight(0,112)+.5-h)*f*.85}
-  const d=Math.hypot(x-LAKE.x,z-LAKE.z);if(d<LAKE.r+11){h=h+(LAKE_Y-1.6-h)*sstep(LAKE.r+11,LAKE.r-2,d)}
+  const d=Math.hypot(x-LAKE.x,z-LAKE.z);if(LAKE.r&&d<LAKE.r+11){h=h+(LAKE_Y-1.6-h)*sstep(LAKE.r+11,LAKE.r-2,d)}
   return h;
 }
-LAKE_Y=rawHeight(LAKE.x,LAKE.z)-.4;
+LAKE_Y=LAKE.r?rawHeight(LAKE.x,LAKE.z)-.4:0;
 function normalAt(x,z){const e=1;const nx=heightAt(x-e,z)-heightAt(x+e,z),nz=heightAt(x,z-e)-heightAt(x,z+e);const l=Math.hypot(nx,2*e,nz);return [nx/l,2*e/l,nz/l]}
 const CELL=65,GRID=8,GMIN=-260;
 let owned=new Set(save&&save.owned||[2,3,4,5].flatMap(i=>[2,3,4,5].map(j=>i+','+j)));
@@ -371,7 +375,7 @@ const inBounds=p=>{const [i,j]=cellOf(p.x,p.z);return i>=0&&j>=0&&i<GRID&&j<GRID
 const adjCell=(i,j)=>!ownedCell(i,j)&&i>=0&&j>=0&&i<GRID&&j<GRID&&[[1,0],[-1,0],[0,1],[0,-1]].some(([a,b])=>ownedCell(i+a,j+b));
 const landPrice=()=>Math.round(30000*Math.pow(1.4,owned.size-16)/1000)*1000;
 const NOT_OWN='Это не твоя земля. Купи участок: кнопка 🏞️ «Земля»';
-const onLake=p=>Math.hypot(p.x-LAKE.x,p.z-LAKE.z)<LAKE.r+2;
+const onLake=p=>LAKE.r>0&&Math.hypot(p.x-LAKE.x,p.z-LAKE.z)<LAKE.r+2;
 
 /* ================= three setup ================= */
 const QS={low:{n:'Низкая',d:'Для слабых телефонов: без теней и проще вдали, зато плавно и не греется.',pr:1,sh:0,seg:150,snow:500},
@@ -418,7 +422,7 @@ let colNormal,colSteep;
   for(let i=0;i<p.count;i++){
     const x=p.getX(i),z=p.getZ(i),y=heightAt(x,z);p.setY(i,y);
     const n=normalAt(x,z),steep=1-n[1],v=fbm(x*.07,z*.07,2);
-    let r=.93+v*.06,g=.95+v*.05,b=1;
+    let r=MAP.snow[0]+v*.06,g=MAP.snow[1]+v*.05,b=MAP.snow[2];
     const rock=sstep(.28,.42,steep+(v-.5)*.08);
     r+=(.44-r)*rock;g+=(.44-g)*rock;b+=(.49-b)*rock;
     // blue-ish snow in hollows, warm on high sunny faces
@@ -437,7 +441,7 @@ let steepView=false;
 function setSteep(on){steepView=on;tg.attributes.color.array.set(on?colSteep:colNormal);tg.attributes.color.needsUpdate=true;$('bSteep').classList.toggle('on',on);$('sLeg').hidden=!on}
 
 // frozen lake
-{const ice=new THREE.Mesh(new THREE.CircleGeometry(LAKE.r+1.5,48),new THREE.MeshPhongMaterial({color:0xb4dcf2,shininess:120,specular:0xc8d8e8,transparent:true,opacity:.96}));ice.rotation.x=-Math.PI/2;ice.position.set(LAKE.x,LAKE_Y,LAKE.z);scene.add(ice);
+if(LAKE.r){const ice=new THREE.Mesh(new THREE.CircleGeometry(LAKE.r+1.5,48),new THREE.MeshPhongMaterial({color:0xb4dcf2,shininess:120,specular:0xc8d8e8,transparent:true,opacity:.96}));ice.rotation.x=-Math.PI/2;ice.position.set(LAKE.x,LAKE_Y,LAKE.z);scene.add(ice);
  const rim=new THREE.Mesh(new THREE.RingGeometry(LAKE.r-1,LAKE.r+1.6,48),new THREE.MeshLambertMaterial({color:0xe8f4fb}));rim.rotation.x=-Math.PI/2;rim.position.set(LAKE.x,LAKE_Y+.05,LAKE.z);scene.add(rim)}
 // distant mountain ranges: big noisy peaks with snow caps and rock ribs
 {const g=new THREE.Group(),mt=new THREE.MeshLambertMaterial({vertexColors:true,fog:false});
@@ -457,7 +461,7 @@ for(let x=-RS/2+4;x<RS/2-4;x+=2.4)for(let z=-RS/2+4;z<RS/2-4;z+=2.4){
   const jx=x+(hash(x*7|0,z*3|0)-.5)*2.2,jz=z+(hash(z*5|0,x*11|0)-.5)*2.2;
   const y=heightAt(jx,jz);if(y>68+fbm(jx*.02,jz*.02)*28)continue;
   const n=normalAt(jx,jz);if(n[1]<.8)continue;
-  if(fbm(jx*.035+9,jz*.035+2,3)<.47)continue;
+  if(fbm(jx*.035+9,jz*.035+2,3)<MAP.tree)continue;
   if(Math.hypot(jx/1.5,jz-110)<30)continue;
   if(Math.hypot(jx-LAKE.x,jz-LAKE.z)<LAKE.r+3)continue;
   if(Math.abs(jx-6)<5&&jz>118)continue;// road
@@ -779,7 +783,7 @@ const MAXL=5;
 const BLM=[1,2,3.5,6,10];// income multiplier per level
 const lvlNames=b=>b.type==='hotel'?BL.stay.map(x=>'Номера «'+x+'»'):BT[b.type].guests?BL.stay:BT[b.type].food?BL.food:BL.other;
 const bMul=b=>BLM[Math.min(MAXL,b.lvl||1)-1];
-const bUpCost=b=>Math.round(BT[b.type].cost*[1.5,3,6,12][(b.lvl||1)-1]/100)*100;
+const bUpCost=b=>Math.round((MAP.easy?.75:1)*BT[b.type].cost*[1.5,3,6,12][(b.lvl||1)-1]/100)*100;
 const GROW=[1,1.1,1.22,1.36,1.55];const WALL=[null,0x8b5a2b,0x6b3f1f,0x4a2c17,0x2b1a10];
 function decorateLevel(B){if(B.deco){B.g.remove(B.deco);B.deco=null}const L=B.lvl||1;
   const model=B.g.children[0],grows2=B.type!=='hotel'&&(BT[B.type].guests||BT[B.type].food);
@@ -1062,7 +1066,12 @@ let xp=save&&save.xp||0,rideDone=save&&save.rideDone||0,best=save&&save.best||{}
 const LV=[0,80,200,400,700,1100,1600,2300,3200,4300,5600,7200,9000,11000,13500];
 const levelOf=x=>{let l=1;while(l<LV.length&&x>=LV[l])l++;return l};
 let level=levelOf(xp);const MOVE_LEVEL=6;
-function addXP(n){xp+=n;const l=levelOf(xp);if(l>level){level=l;const r=l*5000;money+=r;toast(`⭐ Уровень курорта ${l}! +${fmt(r)}`+(l>=MOVE_LEVEL?' · можно открыть новый курорт (⚙ → Мои курорты)':''));window.haptic&&window.haptic('heavy');persist()}}
+const MEDALS=[{l:3,n:'Бронзовый курорт',i:'🥉',c:'#d97706'},{l:6,n:'Серебряный курорт',i:'🥈',c:'#cbd5e1'},{l:10,n:'Золотой курорт',i:'🥇',c:'#facc15'},{l:15,n:'Идеальный курорт',i:'🏆',c:'#f0abfc'}];
+let medals=save&&save.medals||[];
+function giveMedals(){MEDALS.forEach(m=>{if(level>=m.l&&!medals.includes(m.l)){medals.push(m.l);showMedal(m)}})}
+function showMedal(m){const el=document.createElement('div');el.className='modal show';el.style.zIndex=30;el.innerHTML=`<div class="pn mcard" style="text-align:center"><div style="font-size:96px;line-height:1;filter:drop-shadow(0 6px 20px ${m.c})">${m.i}</div><h2 style="margin-top:10px;color:${m.c}">${m.n}!</h2><p>Твой курорт достиг ${m.l} уровня. Медаль сохранена в «⚙ → Мои курорты».</p><div class="row"><button class="btn pri">Ура!</button></div></div>`;
+  document.body.appendChild(el);el.querySelector('button').onclick=()=>el.remove();try{for(let k=0;k<4;k++)fireworks({x:controls.target.x,y:controls.target.y,z:controls.target.z})}catch(e){}tone(660,.2,.2);setTimeout(()=>tone(880,.3,.2),200);persist()}
+function addXP(n){xp+=n;const l=levelOf(xp);if(l>level){level=l;setTimeout(giveMedals,600);const r=l*5000;money+=r;toast(`⭐ Уровень курорта ${l}! +${fmt(r)}`+(l>=MOVE_LEVEL?' · можно открыть новый курорт (⚙ → Мои курорты)':''));window.haptic&&window.haptic('heavy');persist()}}
 function xpLine(){const a=LV[level-1]||0,b=LV[level];return b?clamp((xp-a)/(b-a),0,1):1}
 const QUESTS=[
   {t:'Построй подъёмник, нижняя станция — в жёлтом круге у базы',r:3000,tool:'lift',ok:()=>lifts.some(L=>d2(L.a,BASE)<BASE_LINK)},
@@ -1174,7 +1183,7 @@ const starStr=()=>{const r=Math.round(rating()*2)/2;let s='';for(let i=1;i<=5;i+
 /* ================= persistence ================= */
 function persist(dayOverride){
   try{const cut=[];for(let i=0;i<BASE_TREES;i++)if(!trees[i].on)cut.push(i);const rocksOff=ROCKS.filter(r=>!r.on).map(r=>r.i);
-    localStorage.setItem(SAVE_KEY,JSON.stringify({v:2,seed,money:Math.round(money),price,day:dayOverride||dayN,rocksOff,map:MAPK,ratingHist,quest:questI,xp,rideDone,best,owned:[...owned],qReady:questReady,daily,dailyDay:dayN,gift1m:giftGiven,weather,forecast,
+    localStorage.setItem(SAVE_KEY,JSON.stringify({v:2,seed,money:Math.round(money),price,day:dayOverride||dayN,rocksOff,map:MAPK,medals,ratingHist,quest:questI,xp,rideDone,best,owned:[...owned],qReady:questReady,daily,dailyDay:dayN,gift1m:giftGiven,weather,forecast,
     lifts:lifts.map(L=>({n:L.name,t:L.type,c:L.col,u:L.turbo||0,a:[L.a.x,L.a.z],b:[L.b.x,L.b.z]})),runs:runs.map(R=>({n:R.name,w:R.w,p:R.pts.map(p=>[p.x,p.z]),l:R.lit?1:0,s:R.snow?1:0})),
     blds:buildings.map(b=>({t:b.type,x:b.x,z:b.z,r:b.rot,l:b.lvl||1})),cut,planted:trees.slice(BASE_TREES).filter(t=>t.on).map(t=>[+t.x.toFixed(1),+t.z.toFixed(1)])}))}catch(e){}
 }
@@ -1543,11 +1552,11 @@ function openQuests(){paused=true;$('mMenu').classList.remove('show');
   $('qCard').querySelectorAll('[data-q]').forEach(b=>b.onclick=claimQuest);
   $('qCard').querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>claimDaily(+b.dataset.d));
   if($('qGo'))$('qGo').onclick=()=>{$('mQuests').classList.remove('show');paused=false;setTool(QUESTS[questI].tool)}}
-function resortInfo(r){try{const d=JSON.parse(localStorage.getItem(r.key)||'null')||{};return{day:d.day||1,money:d.money!=null?d.money:startMoney(r.n),lvl:levelOf(d.xp||0),lifts:(d.lifts||[]).length,runs:(d.runs||[]).length}}catch(e){return{day:1,money:0,lvl:1,lifts:0,runs:0}}}
+function resortInfo(r){try{const d=JSON.parse(localStorage.getItem(r.key)||'null')||{};return{medals:d.medals||[],day:d.day||1,money:d.money!=null?d.money:startMoney(r.n),lvl:levelOf(d.xp||0),lifts:(d.lifts||[]).length,runs:(d.runs||[]).length}}catch(e){return{day:1,money:0,lvl:1,lifts:0,runs:0}}}
 function openResorts(){paused=true;$('mMenu').classList.remove('show');persist();
   const maxN=Math.max(...META.list.map(r=>r.n)),nextN=maxN+1,canMove=RESORT===maxN&&level>=MOVE_LEVEL;
   const li=META.list.map(r=>{const I=r.key===SAVE_KEY?{day:dayN,money,lvl:level,lifts:lifts.length,runs:runs.length}:resortInfo(r);
-    return `<li><span style="font-size:24px">${r.key===SAVE_KEY?'📍':'🏔️'}</span><div><b>Курорт №${r.n}</b>${r.key===SAVE_KEY?' <small>(ты здесь)</small>':''}<br><small>Ур. ${I.lvl} · день ${I.day} · ${fmt(I.money)} · ${I.lifts} подъёмн. · ${I.runs} трасс</small></div>${r.key===SAVE_KEY?'':`<button class="btn" data-go="${r.key}">Перейти</button>`}</li>`}).join('');
+    return `<li><span style="font-size:24px">${r.key===SAVE_KEY?'📍':'🏔️'}</span><div><b>Курорт №${r.n}</b> ${(r.key===SAVE_KEY?medals:(resortInfo(r).medals||[])).map(l=>MEDALS.find(m=>m.l===l).i).join('')}${r.key===SAVE_KEY?' <small>(ты здесь)</small>':''}<br><small>Ур. ${I.lvl} · день ${I.day} · ${fmt(I.money)} · ${I.lifts} подъёмн. · ${I.runs} трасс</small></div>${r.key===SAVE_KEY?'':`<button class="btn" data-go="${r.key}">Перейти</button>`}</li>`}).join('');
   $('resCard').innerHTML=`<h2>🗺️ Мои курорты</h2><p>Подними курорт до ${MOVE_LEVEL} уровня, и откроется новая гора. Там всё строишь заново, но стартовый капитал каждый раз больше. Старые курорты остаются: они видны на горизонте, и в них можно вернуться.</p><ul class="rl">${li}</ul>
     ${RESORT===maxN?(canMove?`<div class="row"><button class="btn pri" id="bMove">🏔️ Открыть курорт №${nextN} · старт ${fmt(startMoney(nextN))}</button></div>`:`<p>🔒 Курорт №${nextN} (старт ${fmt(startMoney(nextN))}) откроется на ${MOVE_LEVEL} уровне. Сейчас уровень ${level}: опыт дают гости, стройка и задания.</p>`):''}
     <div class="row"><button class="btn" id="bResClose">Закрыть</button></div>`;
