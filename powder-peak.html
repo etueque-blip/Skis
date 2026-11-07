@@ -943,7 +943,7 @@ function decide(s){
   else s.dest={x:c.run.sm[0].x,z:c.run.sm[0].z};
 }
 function leave(s,delay){if(s.patrol){s.state='leave';s.fade=1;return}
-  if(minutes>15*60&&s.state!=='leave'&&!s.after?.sleep&&Math.random()<.7){const beds=buildings.filter(b=>BT[b.type].guests&&(b.tonight||0)<Math.round(BT[b.type].guests*bMul(b)));if(beds.length){let B=beds[0],bd=1e9;beds.forEach(b=>{const d=Math.hypot(b.x-s.pos.x,b.z-s.pos.z);if(d<bd){bd=d;B=b}});
+  if(minutes>13*60&&s.state!=='leave'&&!s.after?.sleep&&Math.random()<.8){const beds=buildings.filter(b=>BT[b.type].guests&&(b.tonight||0)<Math.round(BT[b.type].guests*bMul(b)));if(beds.length){const B=beds[(Math.random()*beds.length)|0];
     B.tonight=(B.tonight||0)+1;const f=Math.max(0,Math.round(6*s.happy/70));day.food+=f;money+=f;pushRating(s.happy);if(s.run&&s.state==='ski')s.run.skiers--;s.run=null;s.state='walk';s.dest={x:B.x,z:B.z};s.after={sleep:B};return}}if(s.rescuer){s.rescuer.phase=2;s.rescuer=null}if(Math.random()<.3)spawnCar(1);s.state='leave';s.fade=1+(delay||0);const f=Math.max(0,Math.round(6*s.happy/70));day.food+=f;money+=f;pushRating(s.happy)}
 const ratingHist=save&&save.ratingHist||[];
 function pushRating(h){ratingHist.push(clamp(h,0,100));if(ratingHist.length>80)ratingHist.shift()}
@@ -982,7 +982,7 @@ function updateSkier(s,dt){
     const dx=s.dest.x-s.pos.x,dz=s.dest.z-s.pos.z,l=Math.hypot(dx,dz),sp=4.2*dt;
     if(l<=sp){s.pos.x=s.dest.x;s.pos.z=s.dest.z;const a=s.after;s.after=null;
       if(!a)decide(s);
-      else if(a.sleep){day.sleepers=(day.sleepers||0)+1;s.state='leave';s.fade=.4;s.after=null}
+      else if(a.sleep){const B=a.sleep,T=BT[B.type];day.sleepers=(day.sleepers||0)+1;if(buildings.includes(B)){const v=Math.round(T.night/T.guests*bMul(B));money+=v;day.lodge=(day.lodge||0)+v;B.earned+=v;B.paid=(B.paid||0)+v;B.slept=(B.slept||0)+1;burst(new THREE.Vector3(B.x,B.y+6,B.z),'🛏 +'+fmt(v));if(!window._sleepTip){window._sleepTip=1;toast('🛏 Гости заселяются в шале и отели — платят за ночь')}}s.state='leave';s.fade=.4;s.after=null}
       else if(a.eat){if(!buildings.includes(a.eat))return decide(s);s.state='eat';s.t=5;s.eatAt=a.eat;m.visible=false}
       else if(a.lift){if(!lifts.includes(a.lift))return decide(s);s.state='queue';s.lift=a.lift;s.wait=0;a.lift.queue.push(s)}
       else{if(!runs.includes(a.run)||(isNight()&&!a.run.lit))return decide(s);s.state='ski';s.run=a.run;s.d=0;a.run.skiers++}
@@ -1144,13 +1144,13 @@ function checkQuest(){const q=QUESTS[questI];
   if(q&&!questReady&&qDone(q)){questReady=true;toast('✅ Задание выполнено! Нажми «🎁 Забрать»');window.haptic&&window.haptic('heavy');persist()}
   if(daily)daily.forEach(d=>{if(!d.done&&DAILY[d.id].v()>=d.n){d.done=true;toast('📅 Задание дня выполнено! Забери приз');persist()}});
   renderQuest()}
-function endDay(){const sleepers=day.sleepers||0;buildings.forEach(b=>b.tonight=0);
+function endDay(){const sleepers=day.sleepers||0,lodgeLive=day.lodge||0;buildings.forEach(b=>b.tonight=0);
   paused=true;
   skiers.forEach(s=>{if(s.state!=='leave')leave(s);scene.remove(s.mesh)});skiers.length=0;
   const nightFix=lifts.filter(L=>L.broken).length;lifts.forEach(L=>{L.queue.length=0;L.riders=0;if(L.broken){L.broken=false;if(L.warn){L.g.remove(L.warn);L.warn=null}}});runs.forEach(R=>R.skiers=0);renderAlert();
   let autoDaily=0;(daily||[]).forEach(d=>{if(d.done&&!d.claimed){d.claimed=true;autoDaily+=dailyReward()}});money+=autoDaily;
   if(questReady){/* keep the main quest prize waiting for the player */}
-  const occ=clamp(.35+rating()/5*.65,0,1);let night=0,bUp=0;buildings.forEach(b=>{const T=BT[b.type];if(T.night){const skiIn=runs.some(R=>{const e=R.sm[R.sm.length-1];return Math.hypot(e.x-b.x,e.z-b.z)<b.rad+16});const v=Math.round(T.night*occ*(skiIn?1.5:1)*bMul(b));night+=v;b.earned+=v}bUp+=T.upkeep});
+  const occ=clamp(.35+rating()/5*.65,0,1);let night=0,bUp=0;buildings.forEach(b=>{const T=BT[b.type];if(T.night){const skiIn=runs.some(R=>{const e=R.sm[R.sm.length-1];return Math.hypot(e.x-b.x,e.z-b.z)<b.rad+16});const v=Math.max(0,Math.round(T.night*occ*(skiIn?1.5:1)*bMul(b))-(b.paid||0));b.paid=0;b.slept=0;night+=v;b.earned+=v}bUp+=T.upkeep});
   money+=night-bUp;
   const profit=money-day.startMoney;
   const tips=[];
@@ -1169,7 +1169,7 @@ function endDay(){const sleepers=day.sleepers||0;buildings.forEach(b=>b.tonight=
   const th=Object.entries(day.thoughts).sort((a,b)=>b[1]-a[1]).slice(0,4).map(([k,v])=>`${THOUGHTS[k][0]} ${THOUGHTS[k][1]} — ${v}`).join('<br>');
   $('dayCard').innerHTML=`<h2>Итоги дня ${dayN}</h2><p>Подъёмники закрыты, ратраки вышли на склон.</p>
     ${day.carried?`<div class="r"><span>⛑️ Спасатели увезли на носилках</span><b>${day.carried}</b></div>`:''}
-    ${sleepers?`<div class="r"><span>🛏 Пришли ночевать в шале и отели</span><b>${sleepers}</b></div>`:''}
+    ${sleepers?`<div class="r"><span>🛏 Заселились вечером</span><b>${sleepers} · ${fmt(lodgeLive)}</b></div>`:''}
     <div class="r"><span>Гостей</span><b>${day.visitors}${day.nightGuests?` <span style="color:var(--mut);font-weight:500">(🌙 ${day.nightGuests} ночью)</span>`:''}</b></div>
     <div class="r"><span>Ски-пассы</span><b class="pos">${fmt(day.tickets)}</b></div>
     <div class="r"><span>Еда и прокат</span><b class="pos">${fmt(day.food)}</b></div>
@@ -1372,7 +1372,7 @@ function showInfo(o,live){
     if(!o.lit||!o.snow)h+=`<div class="r" style="display:block;line-height:1.35;margin-top:4px"><span>${o.lit?'':'💡 Фонари: на трассе катаются ночью, курорт открыт до 21:00. '}${o.snow?'':'❄️ Пушки: в оттепель трасса не раскисает.'}</span></div>`;
   }else{const T=BT[o.type],LN=lvlNames(o),lv=o.lvl||1;
     h=`<h3>${T.icon} ${T.n} <small style="color:#fde047;font-weight:700">${'★'.repeat(lv)}</small><button class="x" id="iX">✕</button></h3><div class="r"><span>Уровень</span><b style="color:#fde047">${LN[lv-1]}</b></div><div class="r"><span>Доход</span><b>×${bMul(o)}</b></div><div class="r" style="display:block;line-height:1.35"><span>${T.desc}</span></div>
-    ${T.food?`<div class="r"><span>Посетителей</span><b>${o.visits}</b></div>`:''}<div class="r"><span>Заработано</span><b>${fmt(o.earned)}</b></div><div class="r"><span>Содержание</span><b>$${T.upkeep}/день</b></div>`;
+    ${T.guests?`<div class="r"><span>Сегодня ночуют</span><b>${o.slept||0} / ${Math.round(T.guests*bMul(o))}</b></div><div class="r"><span>За ночь до</span><b>${fmt(T.night*bMul(o))}</b></div>`:''}${T.food?`<div class="r"><span>Посетителей</span><b>${o.visits}</b></div>`:''}<div class="r"><span>Заработано</span><b>${fmt(o.earned)}</b></div><div class="r"><span>Содержание</span><b>$${T.upkeep}/день</b></div>`;
     if(live){$('iStats').innerHTML=h.replace(/^<h3>.*?<\/h3>/s,'');return}
     h=h.replace(/(<\/h3>)([\s\S]*)$/,'$1<div id="iStats">$2</div>');
     if(lv<MAXL){const c=bUpCost(o);h+=`<div class="cb"><button class="btn pri" id="iBUp" ${money>=c?'':'disabled'}>⬆ ${LN[lv]} · ${fmt(c)}</button></div><div class="r" style="display:block;line-height:1.35"><span>${T.guests?`Мест: ${Math.round(T.guests*bMul(o))} → ${Math.round(T.guests*BLM[lv])} · доход ×${bMul(o)} → ×${BLM[lv]}${lv===MAXL-1?' · бассейн и вертолёт для VIP':''}`:T.food?`Доход ×${bMul(o)} → ×${BLM[lv]}, гости довольнее`:`Доход ×${bMul(o)} → ×${BLM[lv]}`}</span></div>`}else h+=`<div class="r"><span style="color:#fde047">✦ Максимальный уровень</span></div>`;
