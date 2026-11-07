@@ -440,15 +440,15 @@ function setSteep(on){steepView=on;tg.attributes.color.array.set(on?colSteep:col
 {const ice=new THREE.Mesh(new THREE.CircleGeometry(LAKE.r+1.5,48),new THREE.MeshPhongMaterial({color:0xb4dcf2,shininess:120,specular:0xc8d8e8,transparent:true,opacity:.96}));ice.rotation.x=-Math.PI/2;ice.position.set(LAKE.x,LAKE_Y,LAKE.z);scene.add(ice);
  const rim=new THREE.Mesh(new THREE.RingGeometry(LAKE.r-1,LAKE.r+1.6,48),new THREE.MeshLambertMaterial({color:0xe8f4fb}));rim.rotation.x=-Math.PI/2;rim.position.set(LAKE.x,LAKE_Y+.05,LAKE.z);scene.add(rim)}
 // distant mountain ranges: big noisy peaks with snow caps and rock ribs
-{const g=new THREE.Group(),mt=new THREE.MeshLambertMaterial({vertexColors:true,flatShading:true,fog:false});
+{const g=new THREE.Group(),mt=new THREE.MeshLambertMaterial({vertexColors:true,fog:false});
  for(let k=0;k<22;k++){const a=k/22*Math.PI*2+hash(k,1)*.25,Rr=720+hash(k,2)*260,h=260+hash(k,3)*360,rad=220+hash(k,4)*170;
    const geo=new THREE.ConeGeometry(rad,h,18,10,true);const P=geo.attributes.position,col=new Float32Array(P.count*3);
    for(let i=0;i<P.count;i++){const x=P.getX(i),y=P.getY(i),z=P.getZ(i),t=(y+h/2)/h,ang=Math.atan2(z,x);
      const n=Math.sin(ang*5+k)*.5+Math.sin(ang*11+k*3)*.25+(hash(i,k)-.5)*.35,rr=1+n*.22*(1-t)+(t>.97?0:0);P.setXYZ(i,x*rr,y+n*h*.06*(1-t),z*rr);
      const snowLine=.38+.18*Math.sin(ang*7+k)+(hash(i+9,k)-.5)*.12,rib=Math.abs(Math.sin(ang*9+k*2))>.82&&t<.85;
      const c=t>snowLine&&!rib?[.95,.97,1]:t>snowLine-.1?[.72,.76,.84]:[.46,.5,.58];col[i*3]=c[0];col[i*3+1]=c[1];col[i*3+2]=c[2]}
-   geo.setAttribute('color',new THREE.BufferAttribute(col,3));geo.computeVertexNormals();
-   const m=new THREE.Mesh(geo,mt);m.position.set(Math.cos(a)*Rr,h/2-40,Math.sin(a)*Rr);m.rotation.y=hash(k,5)*3;g.add(m)}
+   geo.setAttribute('color',new THREE.BufferAttribute(col,3));const geoF=geo.index?geo.toNonIndexed():geo;geoF.computeVertexNormals();
+   const m=new THREE.Mesh(geoF,mt);m.position.set(Math.cos(a)*Rr,h/2-40,Math.sin(a)*Rr);m.rotation.y=hash(k,5)*3;g.add(m)}
  scene.add(g)}
 
 /* ---- trees (instanced, can be cut and planted) ---- */
@@ -491,7 +491,7 @@ function clearTreesRect(cx,cz,hw,hd,rot){let n=0;const c=Math.cos(rot),s=Math.si
 // rocks on steep ground
 const ROCKS=[];
 {const pts=[];for(let k=0;k<1400;k++){const x=(hash(k,11)-.5)*RS*.9,z=(hash(k,12)-.5)*RS*.9;const n=normalAt(x,z);if(n[1]<.86&&n[1]>.55)pts.push([x,z])}
- const rm=new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1.4,0),new THREE.MeshLambertMaterial({color:0x8a8f99,flatShading:true}),pts.length);
+ const rm=new THREE.InstancedMesh(new THREE.DodecahedronGeometry(1.4,0),new THREE.MeshLambertMaterial({color:0x8a8f99}),pts.length);
  pts.forEach((p,i)=>{const s=.6+hash(i,13)*1.6;_m.makeRotationY(hash(i,14)*6);_m.scale(new THREE.Vector3(s,s*.7,s));_m.setPosition(p[0],heightAt(p[0],p[1])-.2,p[1]);rm.setMatrixAt(i,_m);ROCKS.push({x:p[0],z:p[1],s:s*1.1,on:true,i})});rm.castShadow=true;scene.add(rm);window.rockMesh=rm}
 function removeRock(r){if(!r.on)return;r.on=false;rockMesh.setMatrixAt(r.i,new THREE.Matrix4().makeScale(0,0,0));rockMesh.instanceMatrix.needsUpdate=true}
 function clearRocks(pts,w){let n=0;const z0=new THREE.Matrix4().makeScale(0,0,0);ROCKS.forEach(r=>{if(!r.on)return;for(const p of pts){if(Math.abs(r.x-p.x)<w+3&&Math.abs(r.z-p.z)<w+3&&Math.hypot(r.x-p.x,r.z-p.z)<w+r.s){r.on=false;rockMesh.setMatrixAt(r.i,z0);n++;break}}});if(n)rockMesh.instanceMatrix.needsUpdate=true}
@@ -650,9 +650,9 @@ function runCheck(sm){
   return r;
 }
 function gradeColor(g){return g<-.04?0xf43f5e:g<.27?0x22c55e:g<.45?0x2f7cf6:g<.7?0x111827:0x581c87}
-const EDGE=['#22c55e','#2f7cf6','#111827','#000000'];
+const EDGE=['#4ade80','#60a5fa','#94a3b8','#a78bfa'];
 let pisteTex=null;
-function getPisteTex(d){if(!pisteTex)pisteTex=EDGE.map(e=>{const cv=document.createElement('canvas');cv.width=64;cv.height=64;const g=cv.getContext('2d');g.fillStyle='#ffffff';g.fillRect(0,0,64,64);for(let y=0;y<64;y+=4){g.fillStyle='rgba(120,150,195,.38)';g.fillRect(0,y,64,1.8)}g.fillStyle=e;g.fillRect(0,0,9,64);g.fillRect(55,0,9,64);g.globalAlpha=.16;g.fillRect(9,0,46,64);g.globalAlpha=1;const t=new THREE.CanvasTexture(cv);t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;return t});return pisteTex[d]}
+function getPisteTex(d){if(!pisteTex)pisteTex=EDGE.map(e=>{const cv=document.createElement('canvas');cv.width=64;cv.height=64;const g=cv.getContext('2d');g.fillStyle='#ffffff';g.fillRect(0,0,64,64);for(let y=0;y<64;y+=4){g.fillStyle='rgba(120,150,195,.38)';g.fillRect(0,y,64,1.8)}g.fillStyle=e;g.fillRect(0,0,3,64);g.fillRect(61,0,3,64);const t=new THREE.CanvasTexture(cv);t.wrapT=THREE.RepeatWrapping;t.anisotropy=8;return t});return pisteTex[d]}
 const bermTex=(()=>{const cv=document.createElement('canvas');cv.width=16;cv.height=16;const g=cv.getContext('2d');const gr=g.createLinearGradient(0,0,16,0);gr.addColorStop(0,'#dfe8f5');gr.addColorStop(.5,'#ffffff');gr.addColorStop(1,'#dfe8f5');g.fillStyle=gr;g.fillRect(0,0,16,16);const t=new THREE.CanvasTexture(cv);t.wrapT=THREE.RepeatWrapping;return t})();
 function ribbon(sm,w,color,op,perVertex,tex){
   const pos=[],idx=[],col=[],uv=[];let cum=0;const gr=perVertex?localGrades(sm):null;
@@ -1643,7 +1643,8 @@ function makeGates(R){const g=new THREE.Group(),list=[];const n=R.sm.length;let 
     const fl=new THREE.Mesh(new THREE.PlaneGeometry(w*2,.4),fm);fl.position.set(cx,heightAt(cx,cz)+1.5,cz);fl.rotation.y=Math.atan2(tx,tz);g.add(fl);
     list.push({i,x:cx,z:cz,lx,lz,w,ok:null,fm});side=-side}
   const kick=[];for(let i=26;i<n-14;i+=30){const a=R.sm[i-2],b=R.sm[i+2];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const off=((i/30)|0)%2?-4:4,lx=-tz,lz=tx;
-    const cx=R.sm[i].x+lx*off,cz=R.sm[i].z+lz*off,cy=heightAt(cx,cz);
+    const gr=(R.sm[i-2].y-R.sm[i+2].y)/(Math.hypot(R.sm[i+2].x-R.sm[i-2].x,R.sm[i+2].z-R.sm[i-2].z)||1);if(gr>.32||gr<.03)continue;
+    const cx=R.sm[i].x+lx*off*.4,cz=R.sm[i].z+lz*off*.4,cy=meshH(cx,cz);
     const sh=new THREE.Shape();sh.moveTo(-3,0);sh.lineTo(2.2,0);sh.lineTo(2.2,1.6);sh.quadraticCurveTo(-.5,.9,-3,0);const kg=new THREE.ExtrudeGeometry(sh,{depth:4.4,bevelEnabled:false});kg.translate(0,0,-2.2);kg.rotateY(-Math.PI/2);kg.scale(KS,KS,KS);kg.translate(0,.45,0);
     const km=new THREE.Mesh(kg,new THREE.MeshLambertMaterial({color:0xf8fbff}));km.position.set(cx,cy-.1,cz);km.rotation.y=Math.atan2(tx,tz);km.castShadow=true;km.receiveShadow=true;g.add(km);
     for(const sd of [-1,1]){const e=box(.07,.07,5.2*KS,0x2563eb,0,0,0);e.position.set(cx+lx*2.25*KS*sd,cy+.45+.85*KS,cz+lz*2.25*KS*sd);e.rotation.set(-.3,Math.atan2(tx,tz),0);g.add(e)}
@@ -1665,16 +1666,15 @@ const sprayG=new THREE.BufferGeometry();sprayG.setAttribute('position',new THREE
 const sprayPts=new THREE.Points(sprayG,new THREE.PointsMaterial({color:0xffffff,map:flakeTex,size:.7,transparent:true,opacity:.9,depthWrite:false}));sprayPts.frustumCulled=false;scene.add(sprayPts);
 const PILE_N=500,pileGeo=new THREE.SphereGeometry(.55,8,5);pileGeo.scale(1.4,.38,.9);
 const piles=new THREE.InstancedMesh(pileGeo,new THREE.MeshLambertMaterial({color:0xf8fbff}),PILE_N);piles.count=0;piles.receiveShadow=true;piles.castShadow=true;piles.frustumCulled=false;scene.add(piles);let pileI=0,pileT=0;
-function addPile(x,z,yaw,sc){const y=heightAt(x,z)+.5;_m.makeRotationY(yaw);_m.scale(new THREE.Vector3(sc,sc,sc));_m.setPosition(x,y,z);piles.setMatrixAt(pileI%PILE_N,_m);pileI++;piles.count=Math.min(pileI,PILE_N);piles.instanceMatrix.needsUpdate=true}
+const _pq=new THREE.Quaternion(),_py=new THREE.Quaternion(),_pn=new THREE.Vector3();
+function addPile(x,z,yaw,sc){const y=meshH(x,z)+.38;const n=normalAt(x,z);_pn.set(n[0],n[1],n[2]);_pq.setFromUnitVectors(_up,_pn);_py.setFromAxisAngle(_up,yaw);_pq.multiply(_py);sc*=.75;_m.compose(_p.set(x,y,z),_pq,new THREE.Vector3(sc,sc,sc));piles.setMatrixAt(pileI%PILE_N,_m);pileI++;piles.count=Math.min(pileI,PILE_N);piles.instanceMatrix.needsUpdate=true}
 function emitSpray(p,vx,vy,vz){const q=sprayV.find(x=>x.t>=1);if(!q)return;const k=1;q.x=p.x+(Math.random()-.5)*.6*k;q.y=p.y+.5+.15*k;q.z=p.z+(Math.random()-.5)*.6*k;q.vx=vx*k;q.vy=vy*k;q.vz=vz*k;q.g=12*k;q.t=0}
 function updSpray(dt){for(let i=0;i<sprayN;i++){const q=sprayV[i];if(q.t<1){q.t+=dt/.7;q.vy-=(q.g||12)*dt;q.x+=q.vx*dt;q.y+=q.vy*dt;q.z+=q.vz*dt}sprayPos[i*3]=q.x;sprayPos[i*3+1]=q.t<1?q.y:-999;sprayPos[i*3+2]=q.z}sprayG.attributes.position.needsUpdate=true}
 // collisions
 let treeHash=null;
 const WIDE=22;let wideG=null,wideHidden=[];
 function wideOn(R){wideOff();if(!R)return;wideG=new THREE.Group();const w=Math.max(WIDE,(R.w||3.9)+8);
-  if(!R.free){wideG.add(ribbon(R.sm,w,0xffffff,.97,false,getPisteTex(R.diff)));R.g.visible=false;wideG.userData.R=R}
-  // soft berms at the wide edge
-  for(const sd of [-1,1]){const off=[];const sm=R.sm;for(let i=0;i<sm.length;i++){const a=sm[Math.max(0,i-1)],b=sm[Math.min(sm.length-1,i+1)];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;off.push({x:sm[i].x-tz*(w+.5)*sd,z:sm[i].z+tx*(w+.5)*sd,y:0})}const bm=ribbon(off,.6,0xf6f9ff,1,false,bermTex);bm.position.y=.06;wideG.add(bm)}
+  // the run keeps its own surface (a very wide ribbon folds on tight turns); only the forest steps aside
   scene.add(wideG);
   const w2=(w+2.5)**2;trees.forEach((t,i)=>{if(!t.on)return;for(let k=0;k<R.sm.length;k+=2){const q=R.sm[k],dx=t.x-q.x,dz=t.z-q.z;if(dx*dx+dz*dz<w2){t.on=false;setTree(i);wideHidden.push(i);break}}});
   ROCKS.forEach(r=>{if(!r.on)return;for(let k=0;k<R.sm.length;k+=2){const q=R.sm[k];if(Math.hypot(r.x-q.x,r.z-q.z)<w+2){r.on=false;r.wide=true;rockMesh.setMatrixAt(r.i,new THREE.Matrix4().makeScale(0,0,0));break}}});rockMesh.instanceMatrix.needsUpdate=true;
@@ -1852,7 +1852,7 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
   // rider pose
   r.lean+=((r.st*clamp(sp/14,0,1)*.6)-r.lean)*Math.min(1,dt*8);
   const crouch=tuck?1:(brake?.45:clamp(.22+sp*.012,0,.55));
-  rider.position.copy(p);rider.position.y=Math.max(p.y,meshH(p.x,p.z))+.47+(r.tumble?.9:0);if(r.board)rider.rotation.set(r.tumble-r.lean*.9,r.f+Math.PI/2+r.spin,r.flip);else rider.rotation.set(r.tumble-r.flip,r.f+r.spin,-r.lean);pose(rider,{c:r.air&&tuck?.9:crouch,st:r.st,lean:r.lean,brake:brake&&!r.air,air:r.air,tuck,t:r.t,grab:r.air&&tuck,pole:tuck&&sp<6&&!r.air});
+  rider.position.copy(p);rider.position.y=Math.max(p.y,meshH(p.x,p.z))+.47+(r.tumble?.35:0);if(r.tumble){rider.rotation.set(-1.35,r.f+Math.sin(r.tumble*.5)*.6,0)}else if(r.board)rider.rotation.set(r.tumble-r.lean*.9,r.f+Math.PI/2+r.spin,r.flip);else rider.rotation.set(r.tumble-r.flip,r.f+r.spin,-r.lean);pose(rider,{c:r.air&&tuck?.9:crouch,st:r.st,lean:r.lean,brake:brake&&!r.air,air:r.air,tuck,t:r.t,grab:r.air&&tuck,pole:tuck&&sp<6&&!r.air});
   // ghost of the best run
   if(ghost.visible){const gh=ghosts[r.key],k=r.t*10,i=Math.min(gh.length-2,Math.floor(k)),f=Math.min(1,k-i),a=gh[i],b=gh[i+1];ghost.position.set(a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f+.47,a[2]+(b[2]-a[2])*f);ghost.rotation.set(0,a[3]+(b[3]-a[3])*f,0);pose(ghost,{c:.4,st:0,lean:0,t:r.t})}
   // camera
