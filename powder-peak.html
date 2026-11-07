@@ -765,9 +765,30 @@ function bCheck(type,x,z,rot){
   r.cut=cut;r.cost=T.cost+cut*10;
   return r;
 }
+const BL={stay:['Стандарт','Люкс','Делюкс','Президентский'],food:['Обычный','Уютный','Шеф-повар','Высокая кухня'],other:['Обычный','Улучшенный','Продвинутый','Топ']};
+const BLM=[1,1.6,2.4,3.6];// income multiplier per level
+const lvlNames=b=>BT[b.type].guests?BL.stay:BT[b.type].food?BL.food:BL.other;
+const bMul=b=>BLM[(b.lvl||1)-1];
+const bUpCost=b=>Math.round(BT[b.type].cost*[1.2,2,3.5][(b.lvl||1)-1]/100)*100;
+function decorateLevel(B){if(B.deco){B.g.remove(B.deco);B.deco=null}const L=B.lvl||1;if(L<2)return;const d=new THREE.Group(),T=BT[B.type],hw=B.fw/2,hd=B.fd/2,top=B.type==='hotel'?13.5:B.type==='parking'?1:6;
+  // gold trim, flags, and for the top level a glowing roof sign
+  const gold=new THREE.MeshPhongMaterial({color:0xfacc15,shininess:120,specular:0xffffff,emissive:0x5a4000});
+  for(const [x,z] of [[-hw,-hd],[hw,-hd],[-hw,hd],[hw,hd]]){const pole=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,3,6),mat(0xe5e7eb));pole.position.set(x,top+1.5,z);d.add(pole);
+    if(L>=3){const fl=new THREE.Mesh(new THREE.PlaneGeometry(1.1,.65),new THREE.MeshLambertMaterial({color:[0xdc2626,0x2563eb,0x16a34a,0xfacc15][(x>0)*2+(z>0)],side:THREE.DoubleSide}));fl.position.set(x+.55,top+2.6,z);fl.userData.flag=1;d.add(fl)}}
+  const trim=new THREE.Mesh(new THREE.BoxGeometry(B.fw+.4,.18,B.fd+.4),gold);trim.position.y=.25;d.add(trim);
+  if(L>=3&&T.guests){const ext=new THREE.Mesh(new THREE.BoxGeometry(B.fw*.6,2.2,B.fd*.6),mat(B.type==='hotel'?0xe9dcc4:0x8b5a2b));ext.position.y=top+.6;d.add(ext);for(let k=-1;k<=1;k++){const w=new THREE.Mesh(new THREE.PlaneGeometry(.9,1),winMat);w.position.set(k*B.fw*.18,top+.7,-B.fd*.3-.01);w.rotation.y=Math.PI;d.add(w)}}
+  if(L>=4){const st=label('✦ '+lvlNames(B)[3]+' ✦','#fde047',.13);st.position.y=top+4.5;d.add(st);const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:0xffd36b,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));glow.scale.set(14,14,1);glow.position.y=top+1;d.add(glow);
+    const pool=new THREE.Mesh(new THREE.BoxGeometry(4,.3,2.6),new THREE.MeshPhongMaterial({color:0x38bdf8,shininess:140,emissive:0x0c4a6e}));pool.position.set(hw+3,.15,0);d.add(pool)}
+  d.traverse(o=>{if(o.isMesh)o.castShadow=true});B.deco=d;B.g.add(d)}
+function upgradeBuilding(B){if((B.lvl||1)>=4)return;const c=bUpCost(B);if(money<c)return toast('Не хватает денег: нужно '+fmt(c),1);money-=c;day.build+=c;day.builtN++;addXP(30);B.lvl=(B.lvl||1)+1;B.cost+=c;decorateLevel(B);
+  B.g.scale.set(1,.01,1);grows.push({o:B.g,t:0});burst(new THREE.Vector3(B.x,B.y+8,B.z),'⬆ '+lvlNames(B)[B.lvl-1]);if(B.lvl===4)fireworks(B);toast(`⬆ ${BT[B.type].n}: ${lvlNames(B)[B.lvl-1]}! Доход ×${bMul(B)}`);showInfo(B);persist()}
+// fireworks over a building
+const fw=[];function fireworks(B){for(let k=0;k<5;k++)setTimeout(()=>{const c=[0xf43f5e,0xfacc15,0x22d3ee,0xa78bfa,0x4ade80][k%5];const n=40,pos=new Float32Array(n*3),vel=[];const x=B.x+(Math.random()-.5)*10,y=B.y+22+Math.random()*8,z=B.z+(Math.random()-.5)*10;for(let i=0;i<n;i++){pos[i*3]=x;pos[i*3+1]=y;pos[i*3+2]=z;const a=Math.random()*6.28,e=Math.acos(2*Math.random()-1),sp=6+Math.random()*4;vel.push([Math.sin(e)*Math.cos(a)*sp,Math.cos(e)*sp,Math.sin(e)*Math.sin(a)*sp])}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));const pm=new THREE.Points(g,new THREE.PointsMaterial({color:c,size:1.4,map:glowTex,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));pm.frustumCulled=false;scene.add(pm);fw.push({pm,vel,t:0});tone(400+k*120,.2,.1)},k*350)}
+function updFireworks(dt){for(let i=fw.length-1;i>=0;i--){const F=fw[i];F.t+=dt;const a=F.pm.geometry.attributes.position.array;F.vel.forEach((v,k)=>{v[1]-=6*dt;a[k*3]+=v[0]*dt;a[k*3+1]+=v[1]*dt;a[k*3+2]+=v[2]*dt});F.pm.geometry.attributes.position.needsUpdate=true;F.pm.material.opacity=Math.max(0,1-F.t/2);if(F.t>2){scene.remove(F.pm);fw.splice(i,1)}}}
 function makeBuilding(type,x,z,rot,free){
   const c=bCheck(type,x,z,rot);const T=BT[type],f=bFoot(type,rot);
-  const B={id:uid++,kind:'bld',type,name:T.n,x,z,rot,fw:f.w,fd:f.d,rad:Math.hypot(f.w,f.d)/2,cost:T.cost,g:new THREE.Group(),visits:0,earned:0};
+  const B={id:uid++,kind:'bld',lvl:1,type,name:T.n,x,z,rot,fw:f.w,fd:f.d,rad:Math.hypot(f.w,f.d)/2,cost:T.cost,g:new THREE.Group(),visits:0,earned:0};
   const y=c.y!==undefined?c.y:heightAt(x,z);B.y=y;
   const m=bModel(type);m.rotation.y=rot*Math.PI/2;m.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});B.g.add(m);
   if(c.found>.4){const fd=box(f.w+.6,c.found+1.2,f.d+.6,0x8a8f99,0,-(c.found+1.2)/2+.1,0);B.g.add(fd)}
@@ -874,7 +895,7 @@ function decide(s){
   else s.dest={x:c.run.sm[0].x,z:c.run.sm[0].z};
 }
 function leave(s,delay){if(s.patrol){s.state='leave';s.fade=1;return}
-  if(minutes>15*60&&s.state!=='leave'&&!s.after?.sleep&&Math.random()<.7){const beds=buildings.filter(b=>BT[b.type].guests&&(b.tonight||0)<BT[b.type].guests);if(beds.length){let B=beds[0],bd=1e9;beds.forEach(b=>{const d=Math.hypot(b.x-s.pos.x,b.z-s.pos.z);if(d<bd){bd=d;B=b}});
+  if(minutes>15*60&&s.state!=='leave'&&!s.after?.sleep&&Math.random()<.7){const beds=buildings.filter(b=>BT[b.type].guests&&(b.tonight||0)<Math.round(BT[b.type].guests*bMul(b)));if(beds.length){let B=beds[0],bd=1e9;beds.forEach(b=>{const d=Math.hypot(b.x-s.pos.x,b.z-s.pos.z);if(d<bd){bd=d;B=b}});
     B.tonight=(B.tonight||0)+1;const f=Math.max(0,Math.round(6*s.happy/70));day.food+=f;money+=f;pushRating(s.happy);if(s.run&&s.state==='ski')s.run.skiers--;s.run=null;s.state='walk';s.dest={x:B.x,z:B.z};s.after={sleep:B};return}}if(s.rescuer){s.rescuer.phase=2;s.rescuer=null}if(Math.random()<.3)spawnCar(1);s.state='leave';s.fade=1+(delay||0);const f=Math.max(0,Math.round(6*s.happy/70));day.food+=f;money+=f;pushRating(s.happy)}
 const ratingHist=save&&save.ratingHist||[];
 function pushRating(h){ratingHist.push(clamp(h,0,100));if(ratingHist.length>80)ratingHist.shift()}
@@ -913,7 +934,7 @@ function updateSkier(s,dt){
     }else{s.pos.x+=dx/l*sp;s.pos.z+=dz/l*sp;m.rotation.y=Math.atan2(dx,dz)}
     s.pos.y=meshH(s.pos.x,s.pos.z)+(onAnyRun(s.pos)?.5:.25);m.position.copy(s.pos);m.position.y+=Math.abs(Math.sin(performance.now()/120+s.phase))*.15;m.rotation.z=0;m.rotation.x=0;
   }else if(s.state==='eat'){
-    s.t-=dt;if(s.t<=0){const b=s.eatAt,T=BT[b.type];m.visible=true;s.ate=true;s.happy=clamp(s.happy+9,0,100);money+=T.food;day.food+=T.food;b.visits++;b.earned+=T.food;decide(s)}
+    s.t-=dt;if(s.t<=0){const b=s.eatAt,T=BT[b.type];m.visible=true;s.ate=true;s.happy=clamp(s.happy+9,0,100);const fv=Math.round(T.food*bMul(b));s.happy=clamp(s.happy+((b.lvl||1)-1)*3,0,100);money+=fv;day.food+=fv;b.visits++;b.earned+=fv;decide(s)}
   }else if(s.state==='queue'){
     const L=s.lift,k=L.queue.indexOf(s);
     const tx=L.a.x-L.dir.x*(2.5+k*1.3)+L.perp.x*((k%2)-.5)*1.2,tz=L.a.z-L.dir.z*(2.5+k*1.3)+L.perp.z*((k%2)-.5)*1.2;
@@ -968,7 +989,7 @@ let money=save&&save.money!=null?save.money:startMoney(RESORT),price=save?save.p
 let minutes=8*60,speed=1,paused=false;
 let day;function newDay(){day={nightGuests:0,visitors:0,tickets:0,food:0,costs:0,build:0,refund:0,runs:0,rides:0,builtN:0,breaks:0,repairs:0,noLift:0,stranded:0,falls:0,thoughts:{},startMoney:money}}newDay();
 function fairValue(){const v=new Set(runs.map(r=>r.diff)).size;return Math.round(22+Math.min(runs.length,12)*5+v*4+lifts.length*3+buildings.length*2+rating()*4)}
-const lodging=()=>buildings.reduce((a,b)=>a+(BT[b.type].guests||0),0);
+const lodging=()=>buildings.reduce((a,b)=>a+Math.round((BT[b.type].guests||0)*bMul(b)),0);
 const parkingCap=()=>60+buildings.filter(b=>b.type==='parking').length*40;
 function expected(){
   if(!lifts.length)return 4;
@@ -1019,6 +1040,9 @@ const QUESTS=[
   {t:'Открой 5 трасс',r:10000,tool:'run',p:()=>[runs.length,5]},
   {t:'Прими 150 гостей за день',r:15000,p:()=>[day.visitors,150]},
   {t:'Построй 4 подъёмника',r:15000,tool:'lift',p:()=>[lifts.length,4]},
+  {t:'Улучши шале или отель (Осмотр → здание → ⬆)',r:12000,tool:'look',ok:()=>buildings.some(b=>(b.lvl||1)>=2&&BT[b.type].guests)},
+  {t:'Поставь турбо на подъёмник (Осмотр → подъёмник → ⚡)',r:8000,tool:'look',ok:()=>lifts.some(L=>L.turbo)},
+  {t:'Доведи здание до президентского уровня',r:60000,tool:'look',ok:()=>buildings.some(b=>(b.lvl||1)>=4)},
   {t:'Купи соседний участок земли',r:10000,tool:'land',ok:()=>owned.size>16},
   {t:'Повесь фонари на трассу (Осмотр → трасса → 💡)',r:8000,tool:'look',ok:()=>runs.some(r=>r.lit)},
   {t:'Поставь снежные пушки на трассу (Осмотр → трасса → ❄️)',r:6000,tool:'look',ok:()=>runs.some(r=>r.snow)},
@@ -1066,7 +1090,7 @@ function endDay(){const sleepers=day.sleepers||0;buildings.forEach(b=>b.tonight=
   const nightFix=lifts.filter(L=>L.broken).length;lifts.forEach(L=>{L.queue.length=0;L.riders=0;if(L.broken){L.broken=false;if(L.warn){L.g.remove(L.warn);L.warn=null}}});runs.forEach(R=>R.skiers=0);renderAlert();
   let autoDaily=0;(daily||[]).forEach(d=>{if(d.done&&!d.claimed){d.claimed=true;autoDaily+=dailyReward()}});money+=autoDaily;
   if(questReady){/* keep the main quest prize waiting for the player */}
-  const occ=clamp(.35+rating()/5*.65,0,1);let night=0,bUp=0;buildings.forEach(b=>{const T=BT[b.type];if(T.night){const skiIn=runs.some(R=>{const e=R.sm[R.sm.length-1];return Math.hypot(e.x-b.x,e.z-b.z)<b.rad+16});const v=Math.round(T.night*occ*(skiIn?1.5:1));night+=v;b.earned+=v}bUp+=T.upkeep});
+  const occ=clamp(.35+rating()/5*.65,0,1);let night=0,bUp=0;buildings.forEach(b=>{const T=BT[b.type];if(T.night){const skiIn=runs.some(R=>{const e=R.sm[R.sm.length-1];return Math.hypot(e.x-b.x,e.z-b.z)<b.rad+16});const v=Math.round(T.night*occ*(skiIn?1.5:1)*bMul(b));night+=v;b.earned+=v}bUp+=T.upkeep});
   money+=night-bUp;
   const profit=money-day.startMoney;
   const tips=[];
@@ -1111,15 +1135,15 @@ const starStr=()=>{const r=Math.round(rating()*2)/2;let s='';for(let i=1;i<=5;i+
 function persist(dayOverride){
   try{const cut=[];for(let i=0;i<BASE_TREES;i++)if(!trees[i].on)cut.push(i);const rocksOff=ROCKS.filter(r=>!r.on).map(r=>r.i);
     localStorage.setItem(SAVE_KEY,JSON.stringify({v:2,seed,money:Math.round(money),price,day:dayOverride||dayN,rocksOff,map:MAPK,ratingHist,quest:questI,xp,rideDone,best,owned:[...owned],qReady:questReady,daily,dailyDay:dayN,gift1m:giftGiven,weather,forecast,
-    lifts:lifts.map(L=>({n:L.name,t:L.type,c:L.col,a:[L.a.x,L.a.z],b:[L.b.x,L.b.z]})),runs:runs.map(R=>({n:R.name,w:R.w,p:R.pts.map(p=>[p.x,p.z]),l:R.lit?1:0,s:R.snow?1:0})),
-    blds:buildings.map(b=>({t:b.type,x:b.x,z:b.z,r:b.rot})),cut,planted:trees.slice(BASE_TREES).filter(t=>t.on).map(t=>[+t.x.toFixed(1),+t.z.toFixed(1)])}))}catch(e){}
+    lifts:lifts.map(L=>({n:L.name,t:L.type,c:L.col,u:L.turbo||0,a:[L.a.x,L.a.z],b:[L.b.x,L.b.z]})),runs:runs.map(R=>({n:R.name,w:R.w,p:R.pts.map(p=>[p.x,p.z]),l:R.lit?1:0,s:R.snow?1:0})),
+    blds:buildings.map(b=>({t:b.type,x:b.x,z:b.z,r:b.rot,l:b.lvl||1})),cut,planted:trees.slice(BASE_TREES).filter(t=>t.on).map(t=>[+t.x.toFixed(1),+t.z.toFixed(1)])}))}catch(e){}
 }
 function addTree(x,z){if(trees.length>=TREE_CAP)return false;const i=trees.length;trees.push({x,z,y:heightAt(x,z),s:.7+Math.random()*.6,on:true});setTree(i);colorTree(i);return true}
 if(save){
   (save.cut||[]).forEach(i=>{if(trees[i]){trees[i].on=false;setTree(i)}});(save.rocksOff||[]).forEach(i=>{const r=ROCKS.find(q=>q.i===i);if(r)removeRock(r)});
   (save.planted||[]).forEach(p=>addTree(p[0],p[1]));treesChanged();
-  (save.blds||[]).forEach(b=>makeBuilding(b.t,b.x,b.z,b.r,true));
-  (save.lifts||[]).forEach(l=>makeLift(new THREE.Vector3(l.a[0],heightAt(l.a[0],l.a[1]),l.a[1]),new THREE.Vector3(l.b[0],heightAt(l.b[0],l.b[1]),l.b[1]),l.t||'chair',l.n,l.c));
+  (save.blds||[]).forEach(b=>{const B=makeBuilding(b.t,b.x,b.z,b.r,true);B.lvl=b.l||1;decorateLevel(B)});
+  (save.lifts||[]).forEach(l=>{const L0=makeLift(new THREE.Vector3(l.a[0],heightAt(l.a[0],l.a[1]),l.a[1]),new THREE.Vector3(l.b[0],heightAt(l.b[0],l.b[1]),l.b[1]),l.t||'chair',l.n,l.c);if(l.u){L0.turbo=l.u;applyTurbo(L0)}});
   (save.runs||[]).forEach(r=>{const R=makeRun(r.p.map(p=>({x:p[0],z:p[1]})),r.n,r.w);if(r.l){R.lit=true;addLamps(R)}if(r.s){R.snow=true;addCannons(R)}});
 }
 if(!daily)daily=genDaily();
@@ -1270,6 +1294,7 @@ function showInfo(o,live){
     <div class="r"><span>Подъёмов всего</span><b>${o.ridden}</b></div><div class="r"><span>Расход</span><b>$${T.upkeep}/час</b></div>`;
     if(live){$('iStats').innerHTML=h.replace(/^<h3>.*?<\/h3>/s,'');return}
     h=h.replace(/(<\/h3>)([\s\S]*)$/,'$1<div id="iStats">$2</div>');
+    {const tl=o.turbo||0;h+=`<div class="r"><span>Турбо</span><b>${tl?'⚡'.repeat(tl):'нет'}</b></div>`;if(tl<3){const c=turboCost(o);h+=`<div class="cb"><button class="btn pri" id="iTurbo" ${money>=c?'':'disabled'}>⚡ Турбо ${tl+1}: быстрее на 25% · ${fmt(c)}</button></div>`}}
     h+=`<div class="cb"><button class="btn" id="iCol">🎨 Цвет <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#${o.col.toString(16).padStart(6,'0')};vertical-align:-1px"></span></button></div>`;
     if(o.broken)h+=`<div class="cb"><button class="btn pri" id="iFix">🔧 Починить ${fmt(repairCost(o))}</button></div>`;
     const up=o.type==='chair'?'gondola':o.type==='tbar'?'chair':null;
@@ -1284,19 +1309,23 @@ function showInfo(o,live){
     const lc=lampCost(o),sc=snowCost(o),wc=widenCost(o);
     h+=`<div class="cb"><button class="btn" id="iEdit">✏️ Изменить</button>${o.w<8.4?`<button class="btn" id="iWide" ${money>=wc?'':'disabled'}>↔ Шире ${fmt(wc)}</button>`:''}</div><div class="cb"><button class="btn pri" id="iRide">⛷️ Прокатиться${best[o.name]?` · 🏆 ${best[o.name].toFixed(1)} с`:''}</button></div><div class="cb">${o.lit?'':`<button class="btn pri" id="iLamp" ${money>=lc?'':'disabled'}>💡 Фонари ${fmt(lc)}</button>`}${o.snow?'':`<button class="btn" id="iSnow" ${money>=sc?'':'disabled'}>❄️ Оснежение ${fmt(sc)}</button>`}</div>`;
     if(!o.lit||!o.snow)h+=`<div class="r" style="display:block;line-height:1.35;margin-top:4px"><span>${o.lit?'':'💡 Фонари: на трассе катаются ночью, курорт открыт до 21:00. '}${o.snow?'':'❄️ Пушки: в оттепель трасса не раскисает.'}</span></div>`;
-  }else{const T=BT[o.type];
-    h=`<h3>${T.icon} ${T.n}<button class="x" id="iX">✕</button></h3><div class="r" style="display:block;line-height:1.35"><span>${T.desc}</span></div>
+  }else{const T=BT[o.type],LN=lvlNames(o),lv=o.lvl||1;
+    h=`<h3>${T.icon} ${T.n} <small style="color:#fde047;font-weight:700">${'★'.repeat(lv)}</small><button class="x" id="iX">✕</button></h3><div class="r"><span>Уровень</span><b style="color:#fde047">${LN[lv-1]}</b></div><div class="r"><span>Доход</span><b>×${bMul(o)}</b></div><div class="r" style="display:block;line-height:1.35"><span>${T.desc}</span></div>
     ${T.food?`<div class="r"><span>Посетителей</span><b>${o.visits}</b></div>`:''}<div class="r"><span>Заработано</span><b>${fmt(o.earned)}</b></div><div class="r"><span>Содержание</span><b>$${T.upkeep}/день</b></div>`;
     if(live){$('iStats').innerHTML=h.replace(/^<h3>.*?<\/h3>/s,'');return}
     h=h.replace(/(<\/h3>)([\s\S]*)$/,'$1<div id="iStats">$2</div>');
+    if(lv<4){const c=bUpCost(o);h+=`<div class="cb"><button class="btn pri" id="iBUp" ${money>=c?'':'disabled'}>⬆ ${LN[lv]} · ${fmt(c)}</button></div><div class="r" style="display:block;line-height:1.35"><span>${T.guests?`Мест: ${Math.round(T.guests*bMul(o))} → ${Math.round(T.guests*BLM[lv])}, ночь дороже`:T.food?'Еда дороже, гости довольнее':'Работает лучше'}</span></div>`}else h+=`<div class="r"><span style="color:#fde047">✦ Максимальный уровень</span></div>`;
   }
   h+=`<div class="cb"><button class="btn red" id="iDel">🧨 Снести</button></div>`;
   el.innerHTML=h;$('iX').onclick=hideInfo;$('iDel').onclick=()=>{setTool('del');selDel=o;refresh()};
-  if($('iUp'))$('iUp').onclick=()=>upgradeLift(o);if($('iCol'))$('iCol').onclick=()=>recolorLift(o);if($('iFix'))$('iFix').onclick=()=>repairLift(o);if($('iEdit'))$('iEdit').onclick=()=>startEditRun(o);if($('iWide'))$('iWide').onclick=()=>widenRun(o);if($('iRide'))$('iRide').onclick=()=>rideIntro(o);if($('iLamp'))$('iLamp').onclick=()=>buyRunUpgrade(o,'lit');if($('iSnow'))$('iSnow').onclick=()=>buyRunUpgrade(o,'snow');
+  if($('iUp'))$('iUp').onclick=()=>upgradeLift(o);if($('iCol'))$('iCol').onclick=()=>recolorLift(o);if($('iBUp'))$('iBUp').onclick=()=>upgradeBuilding(o);if($('iTurbo'))$('iTurbo').onclick=()=>turboLift(o);if($('iFix'))$('iFix').onclick=()=>repairLift(o);if($('iEdit'))$('iEdit').onclick=()=>startEditRun(o);if($('iWide'))$('iWide').onclick=()=>widenRun(o);if($('iRide'))$('iRide').onclick=()=>rideIntro(o);if($('iLamp'))$('iLamp').onclick=()=>buyRunUpgrade(o,'lit');if($('iSnow'))$('iSnow').onclick=()=>buyRunUpgrade(o,'snow');
 }
 function hideInfo(){infoObj=null;$('info').style.display='none'}
+const turboCost=L=>Math.round((LT[L.type].cost(L.len,L.b.y-L.a.y))*[.35,.6,1][L.turbo||0]/100)*100;
+function applyTurbo(L){const T=LT[L.type],k=1+.25*(L.turbo||0);L.speed=T.speed*k;L.interval=T.interval/k}
+function turboLift(L){if((L.turbo||0)>=3)return;const c=turboCost(L);if(money<c)return toast('Не хватает денег',1);money-=c;day.build+=c;day.builtN++;L.turbo=(L.turbo||0)+1;applyTurbo(L);burst(L.b,'⚡ Турбо '+L.turbo);toast(`⚡ ${L.name}: турбо ${L.turbo} — быстрее и больше людей в час`);showInfo(L);persist()}
 function recolorLift(L){const i=LIFT_COLS.indexOf(L.col),c=LIFT_COLS[(i+1)%LIFT_COLS.length];const q=L.queue.slice(),rd=skiers.filter(s=>s.lift===L&&s.state==='lift');scene.remove(L.g);lifts.splice(lifts.indexOf(L),1);
-  const N=makeLift(L.a,L.b,L.type,L.name,c);N.queue=q;q.forEach(s=>s.lift=N);rd.forEach(s=>{s.lift=N;N.riders++});N.ridden=L.ridden;N.broken=L.broken;N.phase=L.phase;showInfo(N);persist()}
+  const N=makeLift(L.a,L.b,L.type,L.name,c);N.turbo=L.turbo;applyTurbo(N);N.queue=q;q.forEach(s=>s.lift=N);rd.forEach(s=>{s.lift=N;N.riders++});N.ridden=L.ridden;N.broken=L.broken;N.phase=L.phase;showInfo(N);persist()}
 function upgradeLift(L){const u=L._up;if(!u||money<u.cost)return;money-=u.cost;day.build+=u.cost;const a=L.a.clone(),b=L.b.clone(),nm=L.name.replace(/^\S+/,LT[u.to].n);
   // keep riders safe: send queue and riders back to decision
   L.queue.forEach(s=>{s.state='walk';s.dest={x:s.pos.x,z:s.pos.z};s.after=null});skiers.forEach(s=>{if(s.lift===L&&s.state==='lift'){s.mesh.visible=true;s.state='walk';s.pos.copy(b);s.dest={x:b.x,z:b.z};s.after=null}});
@@ -1974,7 +2003,7 @@ function frame(now){
     }
   }
   {const t=now/1000,gw=Math.max(0,Math.sin(t*.13)*Math.sin(t*.37+1));gust=gw*gw*(WEATHER[weather].snow>0?1:.3)}
-  updCats(rdt*Math.max(1,speed));camUpd(rdt);keyPan(rdt);updBursts(rdt);updSmoke(rdt);updCars(rdt*Math.max(1,speed));updSpray(rdt);if(ride)updRide(rdt);updGrows(rdt);updSprays(rdt*Math.max(1,speed));
+  updCats(rdt*Math.max(1,speed));updFireworks(rdt);for(const B of buildings)if(B.deco)B.deco.children.forEach(o=>{if(o.userData.flag)o.rotation.y=Math.sin(performance.now()/300+o.position.x)*.4});camUpd(rdt);keyPan(rdt);updBursts(rdt);updSmoke(rdt);updCars(rdt*Math.max(1,speed));updSpray(rdt);if(ride)updRide(rdt);updGrows(rdt);updSprays(rdt*Math.max(1,speed));
   if(hoverReq&&((tool==='lift'&&liftA)||(tool==='run'&&runPts.length)||(tool==='build'&&bType&&!ghostAt)||tool==='trees')){const p=pickGround(hoverReq.x,hoverReq.y);hover=p?(tool==='build'||tool==='trees'?p:snap(p)):null;hoverReq=null;
     if(tool==='lift'||tool==='run')refresh();else drawPreview()}
   const sp=snowG.attributes.position.array,ctr=ride?ride.p:controls.target,cx=ctr.x,cz=ctr.z,cy=ctr.y;
