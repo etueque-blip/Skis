@@ -1072,15 +1072,16 @@ const THOUGHTS={rescue:['⛑️','Спасатель спешит на помо�
 const bubbleTex={};
 function bubble(key){if(!bubbleTex[key]){const cv=document.createElement('canvas');cv.width=cv.height=96;const g=cv.getContext('2d');g.fillStyle='#fff';g.beginPath();g.arc(48,44,38,0,7);g.fill();g.beginPath();g.moveTo(38,76);g.lineTo(48,94);g.lineTo(58,76);g.fill();g.font='44px serif';g.textAlign='center';g.textBaseline='middle';g.fillText(THOUGHTS[key][0],48,46);bubbleTex[key]=new THREE.CanvasTexture(cv)}
   const s=new THREE.Sprite(new THREE.SpriteMaterial({map:bubbleTex[key],depthWrite:false}));s.scale.set(2.4,2.4,1);s.position.y=4;s.renderOrder=6;return s}
-function think(s,key){s.dayThoughts=s.dayThoughts||{};day.thoughts[key]=(day.thoughts[key]||0)+1;
+function think(s,key){s.dayThoughts=s.dayThoughts||{};day.thoughts[key]=(day.thoughts[key]||0)+1;day.tlog=day.tlog||{};(day.tlog[key]=day.tlog[key]||[]).push(minutes);
   if(s.bub){s.mesh.remove(s.bub)}if(skiers.filter(x=>x.bub).length>14)return;s.bub=bubble(key);s.mesh.add(s.bub);s.bubT=4}
-function spawnSkier(){
+const GPN=()=>{const e=expected();return e>360?3:e>140?2:1};
+function spawnSkier(){const g=GPN();
   const r=Math.random(),skill=r<.4?0:r<.8?1:r<.95?2:3;
-  const s={mesh:makeSkierMesh(),skill,state:'walk',pos:new THREE.Vector3(BASE.x+(Math.random()-.5)*22,0,BASE.z+10+Math.random()*6),happy:70,runsDone:0,goal:2+((Math.random()*5)|0),wait:0,phase:Math.random()*6,seen:new Set(),fade:1,ate:false};
+  const s={mesh:makeSkierMesh(),skill,state:'walk',pos:new THREE.Vector3(BASE.x+(Math.random()-.5)*22,0,BASE.z+10+Math.random()*6),happy:70,runsDone:0,goal:2+((Math.random()*5)|0),wait:0,phase:Math.random()*6,seen:new Set(),fade:1,ate:false,g};
   s.pos.y=heightAt(s.pos.x,s.pos.z);s.dest={x:BASE.x+12.4+Math.random()*1.4,z:BASE.z-1.4+(Math.random()-.5)*3};s.after={ticket:1};
-  if(Math.random()<.34)spawnCar(-1);{const pk=buildings.filter(b=>b.type==='parking');if(pk.length&&Math.random()<Math.min(.85,.35+.15*pk.length)){const B=pk[(Math.random()*pk.length)|0],v=Math.round(BT.parking.fee*bMul(B));money+=v;day.parking=(day.parking||0)+v;B.earned+=v;B.visits++}}skiers.push(s);day.visitors++;xp+=1;if(levelOf(xp)>level)addXP(0);day.tickets+=price;money+=price;
+  if(Math.random()<.34)spawnCar(-1);{const pk=buildings.filter(b=>b.type==='parking');if(pk.length&&Math.random()<Math.min(.85,.35+.15*pk.length)){const B=pk[(Math.random()*pk.length)|0],v=Math.round(BT.parking.fee*bMul(B))*g;money+=v;day.parking=(day.parking||0)+v;B.earned+=v;B.visits++}}skiers.push(s);day.visitors+=g;xp+=g;if(levelOf(xp)>level)addXP(0);day.tickets+=price*g;money+=price*g;
   if(price>fairValue()*1.2){s.happy-=10;if(Math.random()<.4)think(s,'price')}
-  const rent=buildings.find(b=>b.type==='rental');if(rent&&skill<=1){money+=BT.rental.rent;day.food+=BT.rental.rent;rent.earned+=BT.rental.rent;s.happy+=5}
+  const rent=buildings.find(b=>b.type==='rental');if(rent&&skill<=1){const rv=BT.rental.rent*g;money+=rv;day.food+=rv;rent.earned+=rv;s.happy+=5}
   return s;
 }
 const eatersAt=b=>skiers.reduce((n,s)=>n+((s.state==='eat'&&s.eatAt===b)||(s.after&&s.after.eat===b)?1:0),0);
@@ -1106,7 +1107,11 @@ function decide(s){
   if(!o.length){
     if(isNight())return leave(s,1);
     if(atBase){s.happy-=35;day.noLift++;think(s,'nolift');return leave(s,2)}
-    s.happy-=25;day.stranded++;think(s,'stuck');{let br=null,bd=1e9;runs.forEach(R=>{const e=R.sm[R.sm.length-1],d=Math.hypot(e.x-s.pos.x,e.z-s.pos.z);if(d<bd){bd=d;br=R}});if(br&&bd<30){day.stuckRun=day.stuckRun||{};day.stuckRun[br.id]=(day.stuckRun[br.id]||0)+1}}return leave(s,2);
+    {let tgt=null,bd=140;lifts.forEach(L=>{if(L.broken)return;const d=Math.hypot(L.a.x-s.pos.x,L.a.z-s.pos.z);if(d<bd){bd=d;tgt={lift:L}}});
+     runs.forEach(R=>{if(isNight()&&!R.lit)return;for(let i=0;i<R.sm.length-10;i+=3){const q=R.sm[i];if(q.y>s.pos.y+3)continue;const d=Math.hypot(q.x-s.pos.x,q.z-s.pos.z);if(d<bd){bd=d;tgt={run:R,i}}}});
+     if(tgt&&!s.rescueWalk){s.rescueWalk=1;s.state='walk';s.after=tgt;if(tgt.lift)s.dest={x:tgt.lift.a.x-tgt.lift.dir.x*2.5,z:tgt.lift.a.z-tgt.lift.dir.z*2.5};else{const q=tgt.run.sm[tgt.i];s.dest={x:q.x,z:q.z}}return}}
+    s.happy-=25;day.stranded++;think(s,'stuck');{const P=s.pos;let where=null,wd=40;lifts.forEach(L=>{const d=Math.hypot(L.b.x-P.x,L.b.z-P.z);if(d<wd){wd=d;where={k:'lift',o:L}}});buildings.forEach(b=>{const d=Math.hypot(b.x-P.x,b.z-P.z);if(d<wd){wd=d;where={k:'bld',o:b}}});
+     if(where){day.stuckAt=day.stuckAt||{};const key=where.k+where.o.id;day.stuckAt[key]=day.stuckAt[key]||{n:0,where,t:0};day.stuckAt[key].n++;day.stuckAt[key].t=minutes}}{let br=null,bd=1e9;runs.forEach(R=>{const e=R.sm[R.sm.length-1],d=Math.hypot(e.x-s.pos.x,e.z-s.pos.z);if(d<bd){bd=d;br=R}});if(br&&bd<30){day.stuckRun=day.stuckRun||{};day.stuckRun[br.id]=(day.stuckRun[br.id]||0)+1}}return leave(s,2);
   }
   let tot=o.reduce((a,b)=>a+b.w,0),r=Math.random()*tot,c=o[0];for(const x of o){r-=x.w;if(r<=0){c=x;break}}
   s.state='walk';s.after=c;
@@ -1115,7 +1120,7 @@ function decide(s){
 }
 function leave(s,delay){if(s.patrol){s.state='leave';s.fade=1;return}
   if(minutes>13*60&&s.state!=='leave'&&!s.after?.sleep&&Math.random()<.8){const beds=buildings.filter(b=>BT[b.type].guests&&(b.tonight||0)<Math.round(BT[b.type].guests*bMul(b)));if(beds.length){const B=beds[(Math.random()*beds.length)|0];
-    B.tonight=(B.tonight||0)+1;const f=Math.max(0,Math.round(6*s.happy/70));day.food+=f;money+=f;pushRating(s.happy);if(s.run&&s.state==='ski')s.run.skiers--;s.run=null;s.state='walk';const D=doorOf(B);s.dest={x:D.x,z:D.z};s.after={sleep:B};return}}if(s.rescuer){s.rescuer.phase=2;s.rescuer=null}if(Math.random()<.3)spawnCar(1);s.state='leave';s.fade=1+(delay||0);const f=Math.max(0,Math.round(6*s.happy/70));day.food+=f;money+=f;pushRating(s.happy)}
+    B.tonight=(B.tonight||0)+(s.g||1);const f=Math.max(0,Math.round(6*s.happy/70))*(s.g||1);day.food+=f;money+=f;pushRating(s.happy);if(s.run&&s.state==='ski')s.run.skiers--;s.run=null;s.state='walk';const D=doorOf(B);s.dest={x:D.x,z:D.z};s.after={sleep:B};return}}if(s.rescuer){s.rescuer.phase=2;s.rescuer=null}if(Math.random()<.3)spawnCar(1);s.state='leave';s.fade=1+(delay||0);const f=Math.max(0,Math.round(6*s.happy/70))*(s.g||1);day.food+=f;money+=f;pushRating(s.happy)}
 const ratingHist=save&&save.ratingHist||[];const dayHist=save&&save.dayHist||[];
 function pushRating(h){ratingHist.push(clamp(h,0,100));if(ratingHist.length>80)ratingHist.shift()}
 function rating(){const base=ratingHist.length?ratingHist.reduce((a,b)=>a+b,0)/ratingHist.length/20:3;const mix=new Set(runs.map(r=>Math.min(2,r.diff))).size;return clamp(base+(mix>=3?.25:0)+Math.min(.25,buildings.filter(b=>BT[b.type].food).length*.1),0,5)}
@@ -1153,11 +1158,11 @@ function updateSkier(s,dt){
     const dx=s.dest.x-s.pos.x,dz=s.dest.z-s.pos.z,l=Math.hypot(dx,dz),toDoor=s.after&&(s.after.sleep||s.after.eat),sp=(toDoor?clamp(l/5,.45,1):1)*3.1*dt;
     if(l<=sp){s.pos.x=s.dest.x;s.pos.z=s.dest.z;const a=s.after;s.after=null;
       if(!a)decide(s);
-      else if(a.sleep){const B=a.sleep,T=BT[B.type];day.sleepers=(day.sleepers||0)+1;if(buildings.includes(B)){const v=Math.round(T.night/T.guests*bMul(B));money+=v;day.lodge=(day.lodge||0)+v;B.earned+=v;B.paid=(B.paid||0)+v;B.slept=(B.slept||0)+1;burst(new THREE.Vector3(B.x,B.y+6,B.z),'🛏 +'+fmt(v));if(!window._sleepTip){window._sleepTip=1;toast('🛏 Гости заселяются в шале и отели — платят за ночь')}}const D=doorOf(B);s.state='enter';s.t=2.2;s.inD=D;s.then='sleep';s.after=null}
+      else if(a.sleep){const B=a.sleep,T=BT[B.type];day.sleepers=(day.sleepers||0)+1;if(buildings.includes(B)){const v=Math.round(T.night/T.guests*bMul(B))*(s.g||1);money+=v;day.lodge=(day.lodge||0)+v;B.earned+=v;B.paid=(B.paid||0)+v;B.slept=(B.slept||0)+1;burst(new THREE.Vector3(B.x,B.y+6,B.z),'🛏 +'+fmt(v));if(!window._sleepTip){window._sleepTip=1;toast('🛏 Гости заселяются в шале и отели — платят за ночь')}}const D=doorOf(B);s.state='enter';s.t=2.2;s.inD=D;s.then='sleep';s.after=null}
       else if(a.ticket){s.state='ticket';s.t=1.2+Math.random()*1.6}
       else if(a.eat){if(!buildings.includes(a.eat))return decide(s);const D=doorOf(a.eat);s.state='enter';s.t=2.2;s.inD=D;s.then='eat';s.eatAt=a.eat}
       else if(a.lift){if(!lifts.includes(a.lift))return decide(s);s.state='queue';s.lift=a.lift;s.wait=0;a.lift.queue.push(s)}
-      else{if(!runs.includes(a.run)||(isNight()&&!a.run.lit))return decide(s);s.state='ski';s.run=a.run;s.lastRun=a.run;s.v=2;s.lane=(Math.random()-.5)*(a.run.w||3.9)*.7;s.turnA=(.6+Math.random()*.5)*(2.3-s.skill*.4);s.turnK=.26+Math.random()*.1+s.skill*.03;s.d=(a.i||0)*(a.run.step||1);a.run.skiers++}
+      else{if(!runs.includes(a.run)||(isNight()&&!a.run.lit))return decide(s);s.state='ski';s.run=a.run;s.lastRun=a.run;s.rescueWalk=0;s.v=2;s.lane=(Math.random()-.5)*(a.run.w||3.9)*.7;s.turnA=(.6+Math.random()*.5)*(2.3-s.skill*.4);s.turnK=.26+Math.random()*.1+s.skill*.03;s.d=(a.i||0)*(a.run.step||1);a.run.skiers++}
     }else{s.pos.x+=dx/l*sp;s.pos.z+=dz/l*sp;m.rotation.y=Math.atan2(dx,dz)}
     s.pos.y=meshH(s.pos.x,s.pos.z)+(onAnyRun(s.pos)?.5:.25);m.position.copy(s.pos);m.position.y+=Math.abs(Math.sin(performance.now()/150+s.phase))*.12;m.rotation.z=0;m.rotation.x=0;
   }else if(s.state==='ticket'){s.t-=dt;m.position.copy(s.pos);m.rotation.set(0,-Math.PI/2,0);if(s.t<=0){if(Math.random()<.15)burst(new THREE.Vector3(s.pos.x,s.pos.y+3,s.pos.z),'🎟');s.state='walk';s.dest={x:BASE.x+(Math.random()-.5)*10,z:BASE.z-6};s.after=null}
@@ -1165,7 +1170,7 @@ function updateSkier(s,dt){
     const D=s.inD;s.t-=dt;s.pos.x+=D.ix*1.05*dt;s.pos.z+=D.iz*1.05*dt;s.pos.y=meshH(s.pos.x,s.pos.z)+.25;m.position.copy(s.pos);m.position.y+=Math.abs(Math.sin(performance.now()/170+s.phase))*.1;m.rotation.set(0,Math.atan2(D.ix,D.iz),0);
     if(s.t<=0){if(s.then==='eat'){s.state='eat';s.t=6;m.visible=false}else{m.visible=false;s.state='leave';s.fade=0}}
   }else if(s.state==='eat'){
-    s.t-=dt;if(s.t<=0){const b=s.eatAt,T=BT[b.type];m.visible=true;s.ate=true;s.happy=clamp(s.happy+9,0,100);const fv=Math.round(T.food*bMul(b));s.happy=clamp(s.happy+((b.lvl||1)-1)*3,0,100);money+=fv;day.food+=fv;day.meals=(day.meals||0)+1;b.visits++;b.earned+=fv;if(buildings.includes(b)){const D=doorOf(b);s.pos.set(D.x+D.ix*1.2,0,D.z+D.iz*1.2);s.pos.y=meshH(s.pos.x,s.pos.z)+.25;s.state='walk';s.dest={x:D.x-D.ix*4+(Math.random()-.5)*3,z:D.z-D.iz*4+(Math.random()-.5)*3};s.after=null}else decide(s)}
+    s.t-=dt;if(s.t<=0){const b=s.eatAt,T=BT[b.type];m.visible=true;s.ate=true;s.happy=clamp(s.happy+9,0,100);const fv=Math.round(T.food*bMul(b))*(s.g||1);s.happy=clamp(s.happy+((b.lvl||1)-1)*3,0,100);money+=fv;day.food+=fv;day.meals=(day.meals||0)+(s.g||1);b.visits++;b.earned+=fv;if(buildings.includes(b)){const D=doorOf(b);s.pos.set(D.x+D.ix*1.2,0,D.z+D.iz*1.2);s.pos.y=meshH(s.pos.x,s.pos.z)+.25;s.state='walk';s.dest={x:D.x-D.ix*4+(Math.random()-.5)*3,z:D.z-D.iz*4+(Math.random()-.5)*3};s.after=null}else decide(s)}
   }else if(s.state==='queue'){
     const L=s.lift,k=L.queue.indexOf(s);
     const tx=L.a.x-L.dir.x*(2.5+k*1.3)+L.perp.x*((k%2)-.5)*1.2,tz=L.a.z-L.dir.z*(2.5+k*1.3)+L.perp.z*((k%2)-.5)*1.2;
@@ -1176,7 +1181,7 @@ function updateSkier(s,dt){
     const L=s.lift;if(s.chairK!==undefined&&L.nch){const u=(s.chairK/L.nch+L.phase)%1*2;s.t=u<1?u:1}else s.t+=liftSpeed(L)*dt/L.len;
     if(s.t>=1){L.riders--;L.ridden++;day.rides++;m.visible=true;s.chairK=undefined;s.seat=undefined;s.state='walk';s.pos.set(L.b.x+L.dir.x*4,0,L.b.z+L.dir.z*4);s.pos.y=heightAt(s.pos.x,s.pos.z);s.dest={x:s.pos.x+(Math.random()-.5)*4,z:s.pos.z+(Math.random()-.5)*4};s.after=null;return}
     if(L.type==='tbar'){const x=L.a.x+(L.b.x-L.a.x)*s.t+L.perp.x*1.3,z=L.a.z+(L.b.z-L.a.z)*s.t+L.perp.z*1.3;m.position.set(x,heightAt(x,z)+.25,z)}
-    else if(s.seat!==undefined){cablePos(L,s.t,1,_v);const o=(s.seat?.52:-.52);m.position.set(_v.x+L.perp.x*o,_v.y-2.95,_v.z+L.perp.z*o)}
+    else if(s.seat!==undefined){cablePos(L,s.t,1,_v);const N=2+2*(L.cap||0),o=(s.seat-(N-1)/2)*(2.2*(L.ws||1)/N);m.position.set(_v.x+L.perp.x*o,_v.y-2.95,_v.z+L.perp.z*o)}
     else{cablePos(L,s.t,1,_v);m.position.set(_v.x,_v.y-2.3,_v.z)}
     m.rotation.set(0,Math.atan2(L.dir.x,L.dir.z),0);
   }else if(s.state==='ski'){
@@ -1201,17 +1206,18 @@ function updateSkier(s,dt){
     s.fade-=dt*1.2;m.scale.setScalar(1.25*clamp(s.fade,0,1));if(s.fade<=0){scene.remove(m);s.dead=true}
   }
 }
+const _wsv=new THREE.Vector3();
 function updateLift(L,dt){
   L.phase=(L.phase+liftSpeed(L)*dt/(L.len*2))%1;
   const n=L.nch;_q.setFromAxisAngle(_up,L.rotY);
   for(let k=0;k<n;k++){let u=(k/n+L.phase)%1*2;const up=u<1,t=up?u:2-u;
     if(L.type==='tbar'){const x=L.a.x+(L.b.x-L.a.x)*t+L.perp.x*1.3*(up?1:-1),z=L.a.z+(L.b.z-L.a.z)*t+L.perp.z*1.3*(up?1:-1);_p.set(x,L.ca.y+(L.cb.y-L.ca.y)*t-2.6,z)}
     else{cablePos(L,t,up?1:-1,_v);_p.set(_v.x,_v.y-(L.type==='gondola'?3:1.7),_v.z)}
-    _m.compose(_p,_q,_one);for(const im of L.cparts)im.setMatrixAt(k,_m)}
+    if(L.ws&&L.ws>1){_wsv.set(L.ws,1,L.ws>1?1+.15*(L.ws-1):1);_m.compose(_p,_q,_wsv)}else _m.compose(_p,_q,_one);for(const im of L.cparts)im.setMatrixAt(k,_m)}
   for(const im of L.cparts)im.instanceMatrix.needsUpdate=true;
   L.load-=dt;
   if(L.type==='chair'&&!L.broken&&L.queue.length&&L.load<=0){L.seats=L.seats||{};let bk=-1,bt=1;for(let k=0;k<n;k++){const u=(k/n+L.phase)%1*2;if(u<1&&u<bt){bt=u;bk=k}}
-    if(bk>=0&&bt*L.len<4&&(L.seats[bk]||0)<2){if(bt<.002)L.seats={};const s=L.queue.shift();s.state='lift';s.chairK=bk;s.seat=L.seats[bk]=(L.seats[bk]||0)+1;s.seat--;s.t=bt;L.riders++;L.load=L.interval*.45;if(s.wait>25)s.happy-=Math.min(20,(s.wait-25)*.4)}
+    if(bk>=0&&bt*L.len<4&&(L.seats[bk]||0)<2+2*(L.cap||0)){if(bt<.002)L.seats={};const s=L.queue.shift();s.state='lift';s.chairK=bk;s.seat=L.seats[bk]=(L.seats[bk]||0)+1;s.seat--;s.t=bt;L.riders++;L.load=L.interval*.45/(1+1.6*(L.cap||0));if(s.wait>25)s.happy-=Math.min(20,(s.wait-25)*.4)}
     for(const k in L.seats){const u=(+k/n+L.phase)%1*2;if(u>=1||u*L.len>4)delete L.seats[k]}}
   else if(L.type!=='chair'&&!L.broken&&L.queue.length&&L.load<=0){const s=L.queue.shift();s.state='lift';s.t=0;L.riders++;L.load=L.interval;if(L.type==='gondola')s.mesh.visible=false;if(s.wait>25)s.happy-=Math.min(20,(s.wait-25)*.4)}
 }
@@ -1269,14 +1275,18 @@ function autoExtend(R){const e=R.pts[R.pts.length-1],tg=[{x:BASE.x+8,z:BASE.z-10
   if(!best){startEditRun(R);toast('Не нашёл ровный путь вниз — перетащи последнюю точку в жёлтый круг у подъёмника или базы',1);return}
   startEditRun(R);runPts=best.pts;refresh();toast('🪄 Продлил трассу до подъёмника/базы. Проверь и нажми «Сохранить»')}
 function specificProbs(){const o=[];
+  Object.values(day.stuckAt||{}).forEach(S=>{if(minutes-S.t>120)return;const W=S.where.o;if(S.where.k==='lift'&&lifts.includes(W))o.push({w:95+S.n,i:'🤷',t:`Застревают наверху ${W.name} — ${S.n}`,fix:'С верхней станции не уходит ни одна трасса (или она не горит ночью). Нарисуй трассу от верхней станции вниз — или «🪄 Авто-трасса».',
+      btns:[{l:'📍 Показать',f:()=>showSpot(W.b)},{l:'🪄 Авто-трасса',p:1,f:()=>{controls.target.copy(W.b);setTool('run');autoRun()}}]});
+    else if(S.where.k==='bld'&&buildings.includes(W))o.push({w:90+S.n,i:'🤷',t:`Застревают у здания «${BT[W.type].n}» — ${S.n}`,fix:'От этого здания не добраться ни до подъёмника, ни до трассы. Проведи трассу мимо него или поставь подъёмник рядом.',
+      btns:[{l:'📍 Показать',f:()=>showSpot(W)},{l:'⛷️ Трасса',p:1,f:()=>setTool('run')}]})});
   runs.forEach(R=>{if(!runEndOk(R)){const st=(day.stuckRun||{})[R.id]||0;o.push({w:100+st,i:'⛔',t:`${R.name} ведёт в никуда`+(st?` · застряли ${st}`:''),fix:'Её конец не у подъёмника, не у базы и не у здания — гости там застревают. «🪄 Продлить» дотянет её вниз сама, или «✏️ Изменить» — перетащи последнюю точку в жёлтый круг.',
     btns:[{l:'📍 Показать',f:()=>showSpot(R.sm[R.sm.length-1])},{l:'🪄 Продлить',p:1,f:()=>autoExtend(R)},{l:'✏️ Изменить',f:()=>startEditRun(R)}]})}});
-  lifts.forEach(L=>{const q=L.queue.length,c=(day.qLift||{})[L.id]||0;if(q>=12||c>=3){const tc=(L.turbo||0)<3?turboCost(L):0;o.push({w:50+q+c,i:'⏳',t:`Очередь у ${L.name} — ${q} чел.`,fix:'Подъёмник не успевает. Включи ⚡ турбо (быстрее и чаще кресла) или поставь второй подъёмник рядом.',
-    btns:[{l:'📍 Показать',f:()=>showSpot(L.a)},...(tc?[{l:`⚡ Турбо ${fmt(tc)}`,p:1,dis:money<tc,f:()=>{turboLift(L);toast('⚡ '+L.name+' ускорен')}}]:[]),{l:'🚡 Ещё подъёмник',f:()=>setTool('lift')}]})}
+  lifts.forEach(L=>{const q=L.queue.length,c=(day.qLift||{})[L.id]||0;if(q>=12||c>=3){const tc=(L.turbo||0)<3?turboCost(L):0;o.push({w:50+q+c,i:'⏳',t:`Очередь у ${L.name} — ${q} чел.`,fix:'Подъёмник не успевает. ⚡ Турбо — быстрее, ↔ Расширить — шире кресла и кабины (больше людей за раз), или поставь второй подъёмник рядом.',
+    btns:[{l:'📍 Показать',f:()=>showSpot(L.a)},...(tc?[{l:`⚡ Турбо ${fmt(tc)}`,p:1,dis:money<tc,f:()=>{turboLift(L);toast('⚡ '+L.name+' ускорен')}}]:[]),...(L.type!=='tbar'&&(L.cap||0)<2?[{l:`↔ Расширить ${fmt(capCost(L))}`,p:1,dis:money<capCost(L),f:()=>widenLift(L)}]:[]),{l:'🚡 Ещё подъёмник',f:()=>setTool('lift')}]})}
     if(L.broken)o.push({w:90,i:'🛠️',t:`${L.name} сломан`,fix:'Почини сейчас или построй мастерскую — она чинит сама.',btns:[{l:'📍 Показать',f:()=>showSpot(L.a)},{l:'🔧 Починить',p:1,f:()=>repairLift(L)}]})});
   runs.forEach(R=>{const n=(day.steepRun||{})[R.id]||0;if(n>=2)o.push({w:30+n,i:'😱',t:`${R.name}: слишком сложная — ${n} гостей испугались`,fix:'Новичкам нужна пологая трасса рядом: нарисуй зелёную вдоль склона, а не прямо вниз.',btns:[{l:'📍 Показать',f:()=>showSpot(R.sm[(R.sm.length/2)|0])},{l:'⛷️ Новая трасса',p:1,f:()=>setTool('run')}]})});
   return o.sort((a,b)=>b.w-a.w)}
-function probList(){return Object.entries(day.thoughts||{}).filter(([k,v])=>PROBS[k]&&v>=2&&!(k==='fall'&&has('patrol'))&&!(k==='broken'&&has('workshop'))).sort((a,b)=>b[1]-a[1])}
+function probList(){const rec={};Object.entries(day.tlog||{}).forEach(([k,a])=>{rec[k]=a.filter(t=>minutes-t<=120).length});return Object.entries(rec).filter(([k,v])=>PROBS[k]&&v>=2&&!(k==='stuck'&&Object.values(day.stuckAt||{}).some(S=>minutes-S.t<=120))&&!(k==='fall'&&has('patrol'))&&!(k==='broken'&&has('workshop'))).sort((a,b)=>b[1]-a[1])}
 let lastProbH='';
 function renderProbs(){const el=$('probs');const S=specificProbs(),L=probList();if((!L.length&&!S.length)||ride){el.hidden=true;lastProbH='';return}
   const n=S.length+L.length,h=S.length?`${S[0].i} <b>${S[0].t}</b>${n>1?` · ещё ${n-1}`:''} <span style="color:#fde047">→ как решить</span>`:`😟 <b>${THOUGHTS[L[0][0]][1]}</b> — ${L[0][1]} гостей${L.length>1?` · ещё ${L.length-1}`:''} <span style="color:#fde047">→ как решить</span>`;if(h!==lastProbH){lastProbH=h;el.innerHTML=h}el.hidden=false}
@@ -1288,9 +1298,9 @@ function renderAlert(){const br=lifts.filter(L=>L.broken),el=$('alert');if(!br.l
   el.innerHTML=`<span style="flex:1;min-width:0">⚠ <b>${L.name}</b> сломан${br.length>1?` <span style="color:var(--mut)">(и ещё ${br.length-1})</span>`:''}</span><button class="btn pri" id="aFix">🔧 Починить ${fmt(repairCost(L))}</button>`;
   $('aFix').onclick=()=>repairLift(L);el.firstChild.onclick=()=>{controls.target.set(L.a.x,L.a.y,L.a.z);camera.position.set(L.a.x-40,L.a.y+60,L.a.z+90)}}
 function tickEconomy(dt,mins){
-  if(minutes>=ARR_START&&minutes<ARR_END){arrAcc+=expected()/(ARR_END-ARR_START)*mins;while(arrAcc>=1&&skiers.length<280){arrAcc--;spawnSkier()}}
+  if(minutes>=ARR_START&&minutes<ARR_END){arrAcc+=expected()/GPN()/(ARR_END-ARR_START)*mins;while(arrAcc>=1&&skiers.length<170){arrAcc--;spawnSkier()}}
   const lit=runs.filter(r=>r.lit).length;
-  if(lit&&minutes>=16.5*60&&minutes<19*60){arrNight+=expected()*.35*Math.min(1,lit/3)/150*mins;while(arrNight>=1&&skiers.length<280){arrNight--;const s=spawnSkier();s.goal=Math.max(1,s.goal-2);day.nightGuests++}}
+  if(lit&&minutes>=16.5*60&&minutes<19*60){arrNight+=expected()/GPN()*.35*Math.min(1,lit/3)/150*mins;while(arrNight>=1&&skiers.length<170){arrNight--;const s=spawnSkier();s.goal=Math.max(1,s.goal-2);day.nightGuests++}}
   const c=(lifts.reduce((a,L)=>a+LT[L.type].upkeep,0)+runs.length*14)/60*mins;money-=c;day.costs+=c;
   if(minutes>=ARR_START&&minutes<closeTime()-20){const ws=has('workshop');lifts.forEach(L=>{
     if(!L.broken){if(Math.random()<mins*.00045*(ws?.5:1)*(weather==='storm'?2:1)*(L.type==='tbar'?.7:1))breakLift(L)}
@@ -1430,15 +1440,15 @@ const starStr=()=>{const r=Math.round(rating());let s='';for(let i=1;i<=5;i++)s+
 function persist(dayOverride){
   try{const cut=[];for(let i=0;i<BASE_TREES;i++)if(!trees[i].on)cut.push(i);const rocksOff=ROCKS.filter(r=>!r.on).map(r=>r.i);
     localStorage.setItem(SAVE_KEY,JSON.stringify({v:2,seed,money:Math.round(money),price,day:dayOverride||dayN,rocksOff,map:MAPK,medals,ratingHist,dayHist,quest:questI,xp,rideDone,best,owned:[...owned],qReady:questReady,daily,dailyDay:dayN,gift1m:giftGiven,weather,forecast,
-    lifts:lifts.map(L=>({n:L.name,t:L.type,c:L.col,u:L.turbo||0,a:[L.a.x,L.a.z],b:[L.b.x,L.b.z]})),runs:runs.map(R=>({n:R.name,w:R.w,p:R.pts.map(p=>[p.x,p.z]),l:R.lit?1:0,s:R.snow?1:0})),
-    blds:(moveB?buildings.concat([moveB]):buildings).map(b=>({t:b.type,x:b.x,z:b.z,r:b.rot,l:b.lvl||1,s:b.summit?1:0})),cut,planted:trees.slice(BASE_TREES).filter(t=>t.on).map(t=>[+t.x.toFixed(1),+t.z.toFixed(1)])}))}catch(e){}
+    lifts:lifts.map(L=>({n:L.name,t:L.type,c:L.col,u:L.turbo||0,w:L.cap||0,a:[L.a.x,L.a.z],b:[L.b.x,L.b.z]})),runs:runs.map(R=>({n:R.name,w:R.w,p:R.pts.map(p=>[p.x,p.z]),l:R.lit?1:0,s:R.snow?1:0})),
+    blds:(moveB?buildings.concat([moveB]):buildings).map(b=>({t:b.type,x:b.x,z:b.z,r:b.rot,l:b.lvl||1,s:b.summit?1:0,c:b.col||0})),cut,planted:trees.slice(BASE_TREES).filter(t=>t.on).map(t=>[+t.x.toFixed(1),+t.z.toFixed(1)])}))}catch(e){}
 }
 function addTree(x,z){if(trees.length>=TREE_CAP)return false;const i=trees.length;trees.push({x,z,y:heightAt(x,z),s:.7+Math.random()*.6,on:true});setTree(i);colorTree(i);return true}
 if(save){
   (save.cut||[]).forEach(i=>{if(trees[i]){trees[i].on=false;setTree(i)}});(save.rocksOff||[]).forEach(i=>{const r=ROCKS.find(q=>q.i===i);if(r)removeRock(r)});
   (save.planted||[]).forEach(p=>addTree(p[0],p[1]));treesChanged();
-  (save.blds||[]).forEach(b=>{const B=makeBuilding(b.t,b.x,b.z,b.r,true);B.lvl=b.l||1;decorateLevel(B);if(b.s){B.summit=1;addSummitDeck(B)}});
-  (save.lifts||[]).forEach(l=>{const L0=makeLift(new THREE.Vector3(l.a[0],heightAt(l.a[0],l.a[1]),l.a[1]),new THREE.Vector3(l.b[0],heightAt(l.b[0],l.b[1]),l.b[1]),l.t||'chair',l.n,l.c);if(l.u){L0.turbo=l.u;applyTurbo(L0)}});
+  (save.blds||[]).forEach(b=>{const B=makeBuilding(b.t,b.x,b.z,b.r,true);B.lvl=b.l||1;decorateLevel(B);if(b.s){B.summit=1;addSummitDeck(B)}if(b.c)setBColor(B,b.c)});
+  (save.lifts||[]).forEach(l=>{const L0=makeLift(new THREE.Vector3(l.a[0],heightAt(l.a[0],l.a[1]),l.a[1]),new THREE.Vector3(l.b[0],heightAt(l.b[0],l.b[1]),l.b[1]),l.t||'chair',l.n,l.c);if(l.u||l.w){L0.turbo=l.u||0;L0.cap=l.w||0;applyTurbo(L0)}});
   (save.runs||[]).forEach(r=>{const R=makeRun(r.p.map(p=>({x:p[0],z:p[1]})),r.n,r.w);if(r.l){R.lit=true;addLamps(R)}if(r.s){R.snow=true;addCannons(R)}});refreshRunDeco();skiInPass();
 }
 if(!daily)daily=genDaily();
@@ -1606,6 +1616,7 @@ function showInfo(o,live){
     if(live){$('iStats').innerHTML=h.replace(/^<h3>.*?<\/h3>/s,'');return}
     h=h.replace(/(<\/h3>)([\s\S]*)$/,'$1<div id="iStats">$2</div>');
     {const tl=o.turbo||0;h+=`<div class="r"><span>Турбо</span><b>${tl?'⚡'.repeat(tl):'нет'}</b></div>`;if(tl<3){const c=turboCost(o);h+=`<div class="cb"><button class="btn pri" id="iTurbo" ${money>=c?'':'disabled'}>⚡ Турбо ${tl+1}: быстрее на 25% · ${fmt(c)}</button></div>`}}
+    if(o.type!=='tbar'){const cp=o.cap||0;h+=`<div class="r"><span>Ширина</span><b>${o.type==='chair'?(2+2*cp)+' места на кресле':['обычные','широкие','двойные'][cp]+' кабины'}</b></div>`;if(cp<2){const c=capCost(o);h+=`<div class="cb"><button class="btn" id="iWideL" ${money>=c?'':'disabled'}>↔ Расширить: ${o.type==='chair'?(4+2*cp)+' места':'больше людей в кабине'} · ${fmt(c)}</button></div>`}}
     if(!buildings.some(b=>b.summit&&d2(b,o.b)<45)){const c=summitCost();h+=`<div class="cb"><button class="btn" id="iSummit" ${money>=c?'':'disabled'}>🏔 Ресторан наверху с площадкой · ${fmt(c)}</button></div><div class="r" style="display:block"><span>Сам найду место у верхней станции, поставлю деревянную площадку и ресторан с видом.</span></div>`}
     h+=`<div class="cb"><button class="btn" id="iCol">🎨 Цвет <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#${o.col.toString(16).padStart(6,'0')};vertical-align:-1px"></span></button></div>`;
     if(o.broken)h+=`<div class="cb"><button class="btn pri" id="iFix">🔧 Починить ${fmt(repairCost(o))}</button></div>`;
@@ -1628,16 +1639,18 @@ function showInfo(o,live){
     h=h.replace(/(<\/h3>)([\s\S]*)$/,'$1<div id="iStats">$2</div>');
     if(lv<MAXL){const c=bUpCost(o);h+=`<div class="cb"><button class="btn pri" id="iBUp" ${money>=c?'':'disabled'}>⬆ ${LN[lv]} · ${fmt(c)}</button></div><div class="r" style="display:block;line-height:1.35"><span>${T.guests?`Мест: ${Math.round(T.guests*bMul(o))} → ${Math.round(T.guests*BLM[lv])} · доход ×${bMul(o)} → ×${BLM[lv]}${lv===MAXL-1?' · бассейн и вертолёт для VIP':''}`:T.food?`Доход ×${bMul(o)} → ×${BLM[lv]}, гости довольнее`:`Доход ×${bMul(o)} → ×${BLM[lv]}`}${(()=>{const per=o.dayInc||0;if(per<=0)return'';const gain=per*(BLM[lv]/bMul(o)-1);return gain>0?`<br>≈ +${fmt(Math.round(gain))} в день · окупится за ~${Math.max(1,Math.ceil(c/gain))} дн.`:''})()}</span></div>`}else h+=`<div class="r"><span style="color:#fde047">✦ Максимальный уровень</span></div>`;
   }
-  h+=`<div class="cb">${o.kind==='bld'?'<button class="btn" id="iMove">↔ Переместить</button>':''}<button class="btn red" id="iDel">🧨 Снести</button></div>`;
-  el.innerHTML=h;$('iX').onclick=hideInfo;$('iDel').onclick=()=>{setTool('del');selDel=o;refresh()};if($('iMove'))$('iMove').onclick=()=>startMove(o);
-  if($('iUp'))$('iUp').onclick=()=>upgradeLift(o);if($('iCol'))$('iCol').onclick=()=>recolorLift(o);if($('iBUp'))$('iBUp').onclick=()=>upgradeBuilding(o);if($('iTurbo'))$('iTurbo').onclick=()=>turboLift(o);if($('iSummit'))$('iSummit').onclick=()=>buildSummit(o);if($('iFix'))$('iFix').onclick=()=>repairLift(o);if($('iEdit'))$('iEdit').onclick=()=>startEditRun(o);if($('iWide'))$('iWide').onclick=()=>widenRun(o);if($('iRide'))$('iRide').onclick=()=>rideIntro(o);if($('iLamp'))$('iLamp').onclick=()=>buyRunUpgrade(o,'lit');if($('iSnow'))$('iSnow').onclick=()=>buyRunUpgrade(o,'snow');
+  h+=`<div class="cb">${o.kind==='bld'?'<button class="btn" id="iMove">↔ Переместить</button>':''}${o.kind==='bld'&&BT[o.type].food?`<button class="btn" id="iBCol">🎨 Цвет <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#${(o.col||bColDef(o.type)).toString(16).padStart(6,'0')};vertical-align:-1px"></span></button>`:''}<button class="btn red" id="iDel">🧨 Снести</button></div>`;
+  el.innerHTML=h;$('iX').onclick=hideInfo;$('iDel').onclick=()=>{setTool('del');selDel=o;refresh()};if($('iMove'))$('iMove').onclick=()=>startMove(o);if($('iBCol'))$('iBCol').onclick=()=>recolorBuilding(o);
+  if($('iUp'))$('iUp').onclick=()=>upgradeLift(o);if($('iCol'))$('iCol').onclick=()=>recolorLift(o);if($('iBUp'))$('iBUp').onclick=()=>upgradeBuilding(o);if($('iTurbo'))$('iTurbo').onclick=()=>turboLift(o);if($('iSummit'))$('iSummit').onclick=()=>buildSummit(o);if($('iWideL'))$('iWideL').onclick=()=>widenLift(o);if($('iFix'))$('iFix').onclick=()=>repairLift(o);if($('iEdit'))$('iEdit').onclick=()=>startEditRun(o);if($('iWide'))$('iWide').onclick=()=>widenRun(o);if($('iRide'))$('iRide').onclick=()=>rideIntro(o);if($('iLamp'))$('iLamp').onclick=()=>buyRunUpgrade(o,'lit');if($('iSnow'))$('iSnow').onclick=()=>buyRunUpgrade(o,'snow');
 }
 function hideInfo(){infoObj=null;$('info').style.display='none'}
 const turboCost=L=>Math.round((LT[L.type].cost(L.len,L.b.y-L.a.y))*[.35,.6,1][L.turbo||0]/100)*100;
-function applyTurbo(L){const T=LT[L.type],k=1+.25*(L.turbo||0);L.speed=T.speed*k;L.interval=T.interval/k}
-function turboLift(L){if((L.turbo||0)>=3)return;const c=turboCost(L);if(money<c)return toast('Не хватает денег',1);money-=c;day.build+=c;day.builtN++;L.turbo=(L.turbo||0)+1;applyTurbo(L);burst(L.b,'⚡ Турбо '+L.turbo);toast(`⚡ ${L.name}: турбо ${L.turbo} — быстрее и больше людей в час`);showInfo(L);persist()}
+function applyTurbo(L){const T=LT[L.type],k=1+.25*(L.turbo||0);L.speed=T.speed*k;L.interval=T.interval/k/(L.type==='chair'?1:1+.7*(L.cap||0));L.ws=1+.5*(L.cap||0)}
+const capCost=L=>Math.round((LT[L.type].cost(L.len,L.b.y-L.a.y))*[.45,.8][L.cap||0]/100)*100;
+function widenLift(L){if((L.cap||0)>=2)return;const c=capCost(L);if(money<c)return toast('Не хватает денег',1);money-=c;day.build+=c;day.builtN++;L.cap=(L.cap||0)+1;applyTurbo(L);clearComplaints(['queue']);burst(L.a,'↔ шире');toast(L.type==='chair'?`↔ ${L.name}: теперь ${2+2*L.cap} места на кресле`:`↔ ${L.name}: кабины шире, берут больше людей`);showInfo(L);persist()}
+function turboLift(L){if((L.turbo||0)>=3)return;const c=turboCost(L);if(money<c)return toast('Не хватает денег',1);money-=c;day.build+=c;day.builtN++;L.turbo=(L.turbo||0)+1;clearComplaints(['queue']);applyTurbo(L);burst(L.b,'⚡ Турбо '+L.turbo);toast(`⚡ ${L.name}: турбо ${L.turbo} — быстрее и больше людей в час`);showInfo(L);persist()}
 function recolorLift(L){const i=LIFT_COLS.indexOf(L.col),c=LIFT_COLS[(i+1)%LIFT_COLS.length];const q=L.queue.slice(),rd=skiers.filter(s=>s.lift===L&&s.state==='lift');scene.remove(L.g);lifts.splice(lifts.indexOf(L),1);
-  const N=makeLift(L.a,L.b,L.type,L.name,c);N.turbo=L.turbo;applyTurbo(N);N.queue=q;q.forEach(s=>s.lift=N);rd.forEach(s=>{s.lift=N;N.riders++});N.ridden=L.ridden;N.broken=L.broken;N.phase=L.phase;showInfo(N);persist()}
+  const N=makeLift(L.a,L.b,L.type,L.name,c);N.turbo=L.turbo;N.cap=L.cap;applyTurbo(N);N.queue=q;q.forEach(s=>s.lift=N);rd.forEach(s=>{s.lift=N;N.riders++});N.ridden=L.ridden;N.broken=L.broken;N.phase=L.phase;showInfo(N);persist()}
 function upgradeLift(L){const u=L._up;if(!u||money<u.cost)return;money-=u.cost;day.build+=u.cost;const a=L.a.clone(),b=L.b.clone(),nm=L.name.replace(/^\S+/,LT[u.to].n);
   // keep riders safe: send queue and riders back to decision
   L.queue.forEach(s=>{s.state='walk';s.dest={x:s.pos.x,z:s.pos.z};s.after=null});skiers.forEach(s=>{if(s.lift===L&&s.state==='lift'){s.mesh.visible=true;s.state='walk';s.pos.copy(b);s.dest={x:b.x,z:b.z};s.after=null}});
@@ -1676,7 +1689,7 @@ function snakeRun(){// add wide S-turns between the first and last point
 function buildRun(){
   const c=runCheck(curveSamples(runPts));if(!c.ok)return toast(c.msg,1);const price=editRun?Math.max(0,c.cost-editRun.cost):c.cost;if(money<price)return toast('Не хватает денег',1);
   let keepW,keepLit,keepSnow,keepName;if(editRun){const o=editRun;keepW=o.w;keepLit=o.lit;keepSnow=o.snow;keepName=o.name;skiers.forEach(s=>{if(s.run===o&&s.state==='ski')leave(s)});scene.remove(o.g);runs.splice(runs.indexOf(o),1);editRun=null}
-  money-=price;day.build+=price;day.builtN++;addXP(15);const R=makeRun(runPts,keepName,keepW);if(keepLit){R.lit=true;addLamps(R)}if(keepSnow){R.snow=true;addCannons(R)}refreshRunDeco();skiInPass();burst(R.sm[0],`${DIFF[R.diff].s} -${fmt(c.cost)}`);toast(`${DIFF[R.diff].s} ${R.name} открыта!`);runPts=[];hover=null;refreshRings();refresh();persist();checkQuest();
+  money-=price;day.build+=price;day.builtN++;addXP(15);const R=makeRun(runPts,keepName,keepW);clearComplaints(['stuck','steep','nolift']);if(keepLit){R.lit=true;addLamps(R)}if(keepSnow){R.snow=true;addCannons(R)}refreshRunDeco();skiInPass();burst(R.sm[0],`${DIFF[R.diff].s} -${fmt(c.cost)}`);toast(`${DIFF[R.diff].s} ${R.name} открыта!`);runPts=[];hover=null;refreshRings();refresh();persist();checkQuest();
 }
 const summitCost=()=>Math.round(BT.restaurant.cost*1.4/100)*100;
 function addSummitDeck(B){const g=new THREE.Group(),gy=(lx,lz)=>meshH(B.x+lx,B.z+lz)-B.y,W=B.fw+9,D=B.fd+9;let top=-1e9;for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)top=Math.max(top,gy(a*W/2,b*D/2));top=Math.max(0,top)+.25;
@@ -1695,15 +1708,21 @@ function buildSummit(L){const c=summitCost();if(money<c)return toast('Не хв�
   money-=c;day.build+=c;day.builtN++;addXP(25);const rot=Math.round(((Math.atan2(-dir.x,-dir.z)/(Math.PI/2))%4+4)%4);
   clearTreesRect(spot.x,spot.z,14,14,0);const B=makeBuilding(spot.type,spot.x,spot.z,0,false);B.summit=1;if(B.road){scene.remove(B.road);B.road=null;B.roadEnd=null}addSummitDeck(B);skiInPass();
   burst(new THREE.Vector3(B.x,B.y+10,B.z),'🏔 -'+fmt(c));toast('🏔 На вершине открылся ресторан с площадкой — гости заходят прямо с подъёмника');showSpot({x:B.x,z:B.z});persist();checkQuest()}
+function clearComplaints(keys){day.tlog=day.tlog||{};keys.forEach(k=>{day.tlog[k]=[]});if(keys.includes('stuck')){day.stuckAt={};day.stuckRun={}}if(keys.includes('queue'))day.qLift={};if(keys.includes('steep'))day.steepRun={};lastProbH='';renderProbs&&renderProbs()}
+var BCOLS=[0x9f1239,0x1e3a8a,0x166534,0x7c2d12,0x334155,0xb45309,0x6d28d9,0x0f766e,0xdb2777];
+function bColDef(t){return t==='cafe'?0x1e3a8a:0x9f1239}
+function setBColor(B,c){const cur=B.col||bColDef(B.type);if(cur===c)return;const m=B.g.children[0];m.traverse(o=>{if(o.isMesh&&o.material&&o.material.color&&!o.material.map&&o.material.color.getHex()===cur)o.material=mat(c)});
+  if(B.deco)B.deco.traverse(o=>{if(o.isMesh&&o.material&&o.material.color&&o.material.color.getHex()===cur)o.material=mat(c)});B.col=c}
+function recolorBuilding(B){const cur=B.col||bColDef(B.type),i=BCOLS.indexOf(cur);setBColor(B,BCOLS[(i+1)%BCOLS.length]);showInfo(B);persist()}
 function startMove(B){hideInfo();moveB=B;buildings.splice(buildings.indexOf(B),1);B.g.visible=false;if(B.road)B.road.visible=false;bType=B.type;bRot=B.rot;setTool('build');bType=B.type;pickerOpen=false;ghostAt=null;toast('↔ Нажми, куда поставить '+BT[B.type].n.toLowerCase()+'. Уровень и доход сохранятся');refresh()}
 function cancelMove(){if(!moveB)return;const B=moveB;moveB=null;buildings.push(B);B.g.visible=true;if(B.road)B.road.visible=true}
 function placeBuilding(){if(moveB){if(!ghostAt)return;const O=moveB,c=bCheck(O.type,ghostAt.x,ghostAt.z,bRot);if(!c.ok)return toast(c.msg,1);const fee=Math.round(BT[O.type].cost*.1/100)*100;if(money<fee)return toast('Не хватает денег: перенос стоит '+fmt(fee),1);
     money-=fee;day.build+=fee;moveB=null;scene.remove(O.g);if(O.heli&&O.heli.m)scene.remove(O.heli.m);if(O.road)scene.remove(O.road);
-    const N=makeBuilding(O.type,ghostAt.x,ghostAt.z,bRot);['lvl','earned','visits','dayInc','e0','tonight','paid','slept'].forEach(k=>{if(O[k]!==undefined)N[k]=O[k]});decorateLevel(N);
+    const N=makeBuilding(O.type,ghostAt.x,ghostAt.z,bRot);['lvl','earned','visits','dayInc','e0','tonight','paid','slept'].forEach(k=>{if(O[k]!==undefined)N[k]=O[k]});decorateLevel(N);if(O.col)setBColor(N,O.col);
     skiers.forEach(s=>{if(s.eatAt===O)s.eatAt=N;if(s.after&&s.after.eat===O)s.after.eat=N;if(s.after&&s.after.sleep===O)s.after.sleep=N});skiInPass();
     burst(new THREE.Vector3(N.x,N.y+6,N.z),'↔ -'+fmt(fee));toast(`${BT[N.type].icon} ${BT[N.type].n} переехал!`);ghostAt=null;setTool('look');persist();return}
   if(!bType||!ghostAt)return;const c=bCheck(bType,ghostAt.x,ghostAt.z,bRot);if(!c.ok)return toast(c.msg,1);if(money<c.cost)return toast('Не хватает денег',1);
-  money-=c.cost;day.build+=c.cost;day.builtN++;addXP(15);const B=makeBuilding(bType,ghostAt.x,ghostAt.z,bRot);if(bType==='cannon'){const near=runs.filter(R=>!R.snow&&R.sm.some(p=>Math.hypot(p.x-B.x,p.z-B.z)<BT.cannon.radius));near.forEach(R=>{R.snow=true;addCannons(R)});if(near.length)setTimeout(()=>toast('❄️ Пушки сами встали вдоль трасс рядом: '+near.map(r=>r.name).join(', ')),900)}burst(new THREE.Vector3(B.x,B.y+6,B.z),`-${fmt(c.cost)}`);toast(`${BT[bType].icon} ${BT[bType].n} построено!`);ghostAt=null;refresh();persist();checkQuest();
+  money-=c.cost;day.build+=c.cost;day.builtN++;addXP(15);const B=makeBuilding(bType,ghostAt.x,ghostAt.z,bRot);clearComplaints(BT[bType].food?['hungry']:bType==='patrol'?['fall']:bType==='workshop'?['broken']:[]);if(bType==='cannon'){const near=runs.filter(R=>!R.snow&&R.sm.some(p=>Math.hypot(p.x-B.x,p.z-B.z)<BT.cannon.radius));near.forEach(R=>{R.snow=true;addCannons(R)});if(near.length)setTimeout(()=>toast('❄️ Пушки сами встали вдоль трасс рядом: '+near.map(r=>r.name).join(', ')),900)}burst(new THREE.Vector3(B.x,B.y+6,B.z),`-${fmt(c.cost)}`);toast(`${BT[bType].icon} ${BT[bType].n} построено!`);ghostAt=null;refresh();persist();checkQuest();
 }
 function onTap(cx,cy){
   const p=pickGround(cx,cy);if(!p)return;
@@ -1717,7 +1736,7 @@ function onTap(cx,cy){
   if(tool==='lift'){
     if(!liftA){if(!inBounds(q))return toast(NOT_OWN,1);liftA=q;hover=null}
     else{let c=liftCheck(liftA,q,liftType);if(!c.ok&&liftType==='tbar'){const c2=liftCheck(liftA,q,'chair');if(c2.ok){liftType='chair';c=c2;toast('Для бугеля круто — ставлю кресельный')}}if(!c.ok){hover=q;refresh();return toast(c.msg,1)}if(money<c.cost)return toast('Не хватает денег: нужно '+fmt(c.cost),1);
-      money-=c.cost;day.build+=c.cost;day.builtN++;addXP(15);const L=makeLift(liftA,q,liftType);burst(q,'-'+fmt(c.cost));toast(`${LT[liftType].icon} ${L.name} построен!`);liftA=null;hover=null;refreshRings();persist();checkQuest()}
+      money-=c.cost;day.build+=c.cost;day.builtN++;addXP(15);const L=makeLift(liftA,q,liftType);clearComplaints(['queue','nolift','stuck']);burst(q,'-'+fmt(c.cost));toast(`${LT[liftType].icon} ${L.name} построен!`);liftA=null;hover=null;refreshRings();persist();checkQuest()}
   }else if(tool==='run'){
     if(!inBounds(q))return toast(NOT_OWN,1);
     if(runPts.length&&d2(q,runPts[runPts.length-1])<3)return;
