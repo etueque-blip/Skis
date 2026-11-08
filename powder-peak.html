@@ -370,14 +370,14 @@ function rawHeight(x,z){
 }
 let LAKE_Y=0;
 // ---------- Big Mountain course (separate map at x≈7000) ----------
-const CX=7000,CL=640,CW=24;
-function cPathX(t){return CX+Math.sin(t/210)*75+Math.sin(t/77+1)*30+Math.sin(t/33+2)*6}
-let cYT=null;function cY(t){if(!cYT){cYT=new Float32Array(Math.ceil((CL+800)/4)+2);let y=1300;for(let k=0;k<cYT.length;k++){const tt=k*4-300;const sl=tt<0?.06:tt>CL?Math.max(.02,.25-(tt-CL)/400):.33+.12*Math.sin(tt/170)+.08*Math.sin(tt/63+2)+(Math.sin(tt/47)>.85?.16:0);cYT[k]=y;y-=sl*4}}
+const CX=7000,CL=1500,CW=26;
+function cPathX(t){return CX+Math.sin(t/260)*70+Math.sin(t/150+1)*22}
+let cYT=null;function cY(t){if(!cYT){cYT=new Float32Array(Math.ceil((CL+800)/4)+2);let y=1300;for(let k=0;k<cYT.length;k++){const tt=k*4-300;const sl=tt<0?.06:tt>CL?Math.max(.02,.25-(tt-CL)/400):.24+.06*Math.sin(tt/320)+.03*Math.sin(tt/140+2);cYT[k]=y;y-=sl*4}}
   const f=(clamp(t,-300,CL+500)+300)/4,i=Math.floor(f);return cYT[i]+(cYT[i+1]-cYT[i])*(f-i)}
 function courseH(x,z){const t=z,px=cPathX(t),d=x-px,ad=Math.abs(d);let h=cY(t);
   h+=ad>CW?Math.pow(ad-CW,1.22)*.42:0;                                       // valley walls
-  h+=(1.6*Math.sin(t*.045+d*.07)+1.1*Math.sin(t*.11-d*.05))*clamp((ad-4)/CW,0,1);// rolling snow off the groomed line
-  if(Math.sin(t/140+1)>.6)h+=.55*Math.sin(t*.32)*Math.sin(d*.45)*clamp(1-ad/CW,0,1);// mogul fields on some sections
+  h+=(1.6*Math.sin(t*.045+d*.07)+1.1*Math.sin(t*.11-d*.05))*clamp((ad-CW)/CW,0,1);// rolling powder outside the groomed piste
+  h+=.18*d*d/(CW*CW)*clamp(1-ad/CW,0,1);// slightly dished piste keeps you in the middle
   return h}
 function heightAt(x,z){if(x>5000)return courseH(x,z);
   let h=rawHeight(x,z);
@@ -2119,12 +2119,12 @@ function pose(m,o){// o: {c crouch 0..1, st steer, lean, brake, air, tuck, t, sl
 const KS=.9;// kicker / gate size in world units for the small rider
 const gatePoleG=new THREE.CylinderGeometry(.05,.05,1.3,6).translate(0,.65+.45,0);
 function makeGates(R){const g=new THREE.Group(),list=[];const n=R.sm.length;let side=1;
-  for(let i=18;i<n-14;i+=24){const a=R.sm[i-1],b=R.sm[i+1];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const lx=-tz,lz=tx,w=2.6;
-    const cx=R.sm[i].x+lx*side*5,cz=R.sm[i].z+lz*side*5,col=side>0?0xdc2626:0x2563eb,fm=new THREE.MeshLambertMaterial({color:col,side:THREE.DoubleSide});
+  for(let i=18;i<n-14;i+=R.course?44:24){const a=R.sm[i-1],b=R.sm[i+1];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const lx=-tz,lz=tx,w=R.course?4.2:2.6;
+    const cx=R.sm[i].x+lx*side*(R.course?3:5),cz=R.sm[i].z+lz*side*(R.course?3:5),col=side>0?0xdc2626:0x2563eb,fm=new THREE.MeshLambertMaterial({color:col,side:THREE.DoubleSide});
     for(const s2 of [-1,1]){const x=cx+lx*w*s2,z=cz+lz*w*s2;const p=new THREE.Mesh(gatePoleG,fm);p.position.set(x,heightAt(x,z),z);p.castShadow=true;g.add(p)}
     const fl=new THREE.Mesh(new THREE.PlaneGeometry(w*2,.4),fm);fl.position.set(cx,heightAt(cx,cz)+1.5,cz);fl.rotation.y=Math.atan2(tx,tz);g.add(fl);
     list.push({i,x:cx,z:cz,lx,lz,w,ok:null,fm});side=-side}
-  const kick=[];for(let i=26;i<n-14;i+=R.course?24:30){const a=R.sm[i-2],b=R.sm[i+2];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const off=((i/30)|0)%2?-4:4,lx=-tz,lz=tx;
+  const kick=[];for(let i=R.course?60:26;i<n-14;i+=R.course?88:30){const a=R.sm[i-2],b=R.sm[i+2];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const off=((i/30)|0)%2?-4:4,lx=-tz,lz=tx;
     const gr=(R.sm[i-2].y-R.sm[i+2].y)/(Math.hypot(R.sm[i+2].x-R.sm[i-2].x,R.sm[i+2].z-R.sm[i-2].z)||1);if(gr>(R.course?.7:.32)||gr<.03)continue;
     const cx=R.sm[i].x+lx*off*.4,cz=R.sm[i].z+lz*off*.4,cy=meshH(cx,cz);
     const sh=new THREE.Shape();sh.moveTo(-3,0);sh.lineTo(2.2,0);sh.lineTo(2.2,1.6);sh.quadraticCurveTo(-.5,.9,-3,0);const kg=new THREE.ExtrudeGeometry(sh,{depth:4.4,bevelEnabled:false});kg.translate(0,0,-2.2);kg.rotateY(-Math.PI/2);kg.scale(KS,KS,KS);kg.translate(0,.45,0);
@@ -2197,10 +2197,10 @@ function buildCourse(){if(COURSE)return COURSE;const g=new THREE.Group();
   const tg2=new THREE.BufferGeometry();tg2.setAttribute('position',new THREE.BufferAttribute(pos,3));tg2.setAttribute('color',new THREE.BufferAttribute(col,3));tg2.setIndex(idx);tg2.computeVertexNormals();
   const tm=new THREE.Mesh(tg2,new THREE.MeshLambertMaterial({vertexColors:true}));tm.receiveShadow=true;g.add(tm);
   // forest along both sides, thicker further out
-  const tp=[];for(let k=0;k<3200;k++){const t=T0+hash(k,401)*(T1-T0),sd=hash(k,402)<.5?-1:1,d=sd*(CW+7+Math.pow(hash(k,403),1.4)*250);if(Math.abs(d)<CW+7)continue;const x=cPathX(t)+d;tp.push([x,courseH(x,t),t,1+hash(k,404)*1.4])}
+  const tp=[];for(let k=0;k<5000;k++){const t=T0+hash(k,401)*(T1-T0),sd=hash(k,402)<.5?-1:1,d=sd*(CW+7+Math.pow(hash(k,403),1.4)*250);if(Math.abs(d)<CW+7)continue;const x=cPathX(t)+d;tp.push([x,courseH(x,t),t,1+hash(k,404)*1.4])}
   const tim=new THREE.InstancedMesh(treeGeo,new THREE.MeshLambertMaterial({color:0x1d5434}),tp.length);tp.forEach(([x,y,z,sc],k)=>{_m.makeScale(sc,sc*1.2,sc).setPosition(x,y-.4,z);tim.setMatrixAt(k,_m)});tim.castShadow=true;g.add(tim);
   // big peaks on the horizon
-  for(let k=0;k<8;k++){const t=-200+k*130,sd=k%2?1:-1,h=380+hash(k,405)*260,cg=new THREE.ConeGeometry(260+hash(k,406)*120,h,9,1);const cm=new THREE.Mesh(cg,new THREE.MeshLambertMaterial({color:0xe6edf6}));cm.position.set(cPathX(t)+sd*(520+hash(k,407)*200),cY(t)+h/2-60,t);g.add(cm)}
+  for(let k=0;k<14;k++){const t=-200+k*140,sd=k%2?1:-1,h=380+hash(k,405)*260,cg=new THREE.ConeGeometry(260+hash(k,406)*120,h,9,1);const cm=new THREE.Mesh(cg,new THREE.MeshLambertMaterial({color:0xe6edf6}));cm.position.set(cPathX(t)+sd*(520+hash(k,407)*200),cY(t)+h/2-60,t);g.add(cm)}
   // start hut, finish arch
   {const t=4,px=cPathX(t),y=courseH(px,t);g.add(box(8,4,6,0x7c4a26,px-CW-6,y+2,t),box(9,.4,7,0xf8fafc,px-CW-6,y+4.2,t));const sl=label('🏔 СТАРТ · Большая гора','#fde68a',.12);sl.position.set(px,y+10,t);g.add(sl)}
   {const t=CL-6,px=cPathX(t),y=courseH(px,t);for(const sd of [-1,1])g.add(box(.8,7,.8,0xdc2626,px+sd*(CW-2),y+3.5,t));g.add(box(2*CW-2,1.4,.5,0xdc2626,px,y+7,t));const fl=label('🏁 ФИНИШ','#ffffff',.12);fl.position.set(px,y+9.5,t);g.add(fl)}
@@ -2303,7 +2303,8 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
       r.boosting=keys.boost&&r.boost>0;if(r.boosting){vf+=15*dt;r.boost=Math.max(0,r.boost-.42*dt);if(Math.random()<.5)emitSpray(p,-r.vx*.3,1+Math.random(),-r.vz*.3)}else r.boost=Math.min(1,r.boost+.03*dt);
       r.vx=fx*vf+lx*vl;r.vz=fz*vf+lz*vl}
     else{r.vx*=1-.04*dt;r.vz*=1-.04*dt}
-    sp=Math.hypot(r.vx,r.vz);if(sp>38){r.vx*=38/sp;r.vz*=38/sp;sp=38}r.top=Math.max(r.top,sp);
+    sp=Math.hypot(r.vx,r.vz);{const cap=r.R&&r.R.course?(r.boosting?24:20):38;if(sp>cap){const k=Math.max(cap/sp,1-2.5*dt);r.vx*=k;r.vz*=k;sp*=k}}r.top=Math.max(r.top,sp);
+    if(r.R&&r.R.course&&!r.air){const off=p.x-cPathX(p.z),lim=CW-3;if(Math.abs(off)>lim){const push=(Math.abs(off)-lim)*4*dt*Math.sign(off);r.vx-=push*6;p.x-=push*.6;if(r.warnT<=0&&Math.abs(off)>lim+2){rideMsg('↩ Держись трассы');r.warnT=2.5}}}
     const nx=p.x+r.vx*dt*RSC,nz=p.z+r.vz*dt*RSC;
     if(nx<5000&&!inBounds({x:nx,z:nz})){r.vx*=-.3;r.vz*=-.3;r.f+=Math.PI*.6;if(r.warnT<=0){rideMsg('🚧 Граница твоей земли');r.warnT=2}}
     else if(!r.air&&!(hitTree(p.x,p.z)||hitHouse(p.x,p.z))&&(hitTree(nx,nz)||hitHouse(nx,nz))){if(sp>7)crash(r);else{
@@ -2313,7 +2314,7 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
     else{p.x=nx;p.z=nz;r.blockT=Math.max(0,(r.blockT||0)-dt)}
     const g=heightAt(p.x,p.z);
     if(!r.air){const vyG=(g-r.lastG)/dt/RSC;const jump=keys.jump&&!r.jumpLatch;if(jump)r.jumpLatch=true;if(!keys.jump)r.jumpLatch=false;
-      if(jump||(sp>12&&(vyG-r.prevVy)/dt<-95)){r.air=true;r.airT=0;r.trick=!!jump;r.vy=r.prevVy+(jump?8.5:0);r.flipRate=Math.max(8.6,2*Math.PI/Math.max(.35,(2*Math.max(1,r.vy)/30/RSC)*.7));p.y=g+.02;if(jump)tone(300,.08,.08)}
+      if(jump||(!(r.R&&r.R.course)&&sp>12&&(vyG-r.prevVy)/dt<-95)){r.air=true;r.airT=0;r.trick=!!jump;r.vy=r.prevVy+(jump?8.5:0);r.flipRate=Math.max(8.6,2*Math.PI/Math.max(.35,(2*Math.max(1,r.vy)/30/RSC)*.7));p.y=g+.02;if(jump)tone(300,.08,.08)}
       else{p.y=g;r.prevVy=clamp(vyG,-40,40)}}
     if(r.air){r.airT+=dt;if(tuck)r.grabT=(r.grabT||0)+dt;r.vy-=30*dt;p.y+=r.vy*dt*RSC;if(p.y<=g){p.y=g;r.air=false;r.prevVy=0;if(r.airT>.25)r.airTot+=r.airT;
       const vd=Math.atan2(r.vx,r.vz);let da=Math.abs(((vd-r.f)%(2*Math.PI)+3*Math.PI)%(2*Math.PI)-Math.PI);
@@ -2367,7 +2368,8 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
     $('rGates').textContent=A.stop?'🏔 позади':`🌊 ${Math.max(0,Math.round(A.gap))} м`;if(!A.stop&&A.gap<12&&Math.random()<dt0*3)window.haptic&&window.haptic('light')}$('ride').classList.toggle('inair',!!(r.air&&r.trick));if(finePatch.visible)fineUpd(p);
   // rider pose
   r.lean+=((r.st*clamp(sp/14,0,1)*.6)-r.lean)*Math.min(1,dt*8);
-  const crouch=tuck?1:(brake?.45:clamp(.22+sp*.012,0,.55));
+  if(r.wasAir&&!r.air)r.landT=.45;r.wasAir=r.air;if(r.landT>0)r.landT-=dt;
+  const crouch=Math.max(tuck?1:(brake?.45:clamp(.22+sp*.012,0,.55)),r.landT>0?r.landT/.45*.95:0);
   rider.position.copy(p);rider.position.y=Math.max(p.y,meshH(p.x,p.z))+.47+(r.tumble?.35:0);if(r.tumble){rider.rotation.set(-1.35,r.f+Math.sin(r.tumble*.5)*.6,0)}else if(r.board)rider.rotation.set(r.tumble-r.lean*.9,r.f+Math.PI/2+r.spin,r.flip);else rider.rotation.set(r.tumble-r.flip,r.f+r.spin,-r.lean);pose(rider,{c:r.air&&tuck?.9:crouch,st:r.st,lean:r.lean,brake:brake&&!r.air,air:r.air,tuck,t:r.t,grab:r.air&&tuck,pole:tuck&&sp<6&&!r.air});
   // ghost of the best run
   if(ghost.visible){const gh=ghosts[r.key],k=r.t*10,i=Math.min(gh.length-2,Math.floor(k)),f=Math.min(1,k-i),a=gh[i],b=gh[i+1];ghost.position.set(a[0]+(b[0]-a[0])*f,a[1]+(b[1]-a[1])*f+.47,a[2]+(b[2]-a[2])*f);ghost.rotation.set(0,a[3]+(b[3]-a[3])*f,0);pose(ghost,{c:.4,st:0,lean:0,t:r.t})}
