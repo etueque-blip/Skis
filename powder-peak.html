@@ -1086,6 +1086,7 @@ function spawnSkier(){
 const eatersAt=b=>skiers.reduce((n,s)=>n+((s.state==='eat'&&s.eatAt===b)||(s.after&&s.after.eat===b)?1:0),0);
 function doorOf(B){const T=BT[B.type],k=(B.type!=='hotel'&&(T.guests||T.food))?GROW[(B.lvl||1)-1]:1,h=(B.type==='hotel'?5.6:B.type==='restaurant'?4.7:T.d/2+.15)*k,th=B.rot*Math.PI/2,ix=Math.sin(th),iz=Math.cos(th);
   return {x:B.x-ix*(h+1.6),z:B.z-iz*(h+1.6),ix,iz}}
+function mergeInto(p,self){let best=null;for(const O of runs){if(O===self)continue;const w=(O.w||3.9)+4.5;for(let i=0;i<O.sm.length-10;i++){const q=O.sm[i];if(Math.abs(q.x-p.x)>w||Math.abs(q.z-p.z)>w)continue;const d=Math.hypot(q.x-p.x,q.z-p.z);if(d<w&&(!best||d<best.d))best={O,i,d}}}return best}
 function foodNear(P){let best=null,bs=0;buildings.forEach(b=>{const T=BT[b.type];if(!T.food)return;const d=Math.hypot(P.x-b.x,P.z-b.z);if(d>=T.radius)return;const sc=(1+((b.lvl||1)-1)*.35)*(b.skiIn?1.5:1)/(1+d/80)/(1+eatersAt(b)*.25);if(sc>bs){bs=sc;best=b}});return best}
 function matchW(R,s){const dd=R.diff-s.skill;let w=dd===0?3:dd<0?1.2/(1-dd):dd===1?.5:.04;w/=1+(R.skiers||0)*.12;if(R.snow)w*=1.15;if(s.lastRun===R)w*=.6;return w}
 // look one step ahead: what can this skier ski from the top of the lift?
@@ -1094,6 +1095,7 @@ function optionsAt(P,s){
   const atBase=d2(P,BASE)<BASE_LINK,o=[];
   lifts.forEach(L=>{if(d2(P,L.a)<LINK||(atBase&&d2(BASE,L.a)<BASE_LINK)){let w=1.4/(1+L.queue.length*.12);if(L.type==='tbar'&&s.skill===0)w*=1.8;if(s.runsDone>=s.goal)w*=.25;w*=(.03+topScore(L,s))/3;if(L.broken)w*=.05;o.push({w,lift:L})}});
   runs.forEach(R=>{if(isNight()&&!R.lit)return;if(d2(P,R.sm[0])<LINK||(atBase&&d2(BASE,R.sm[0])<BASE_LINK)){let w=matchW(R,s);if(!s.seen.has(R.id))w*=1.6;if(s.runsDone>=s.goal&&d2(R.sm[R.sm.length-1],BASE)<BASE_LINK)w*=4;o.push({w,run:R})}});
+  if(!o.some(x=>x.run)&&!atBase){const m=mergeInto(P,s.lastRun);if(m&&!(isNight()&&!m.O.lit))o.push({w:matchW(m.O,s)+.6,run:m.O,i:m.i})}
   return{atBase,o};
 }
 function decide(s){
@@ -1109,7 +1111,7 @@ function decide(s){
   let tot=o.reduce((a,b)=>a+b.w,0),r=Math.random()*tot,c=o[0];for(const x of o){r-=x.w;if(r<=0){c=x;break}}
   s.state='walk';s.after=c;
   if(c.lift)s.dest={x:c.lift.a.x-c.lift.dir.x*2.5,z:c.lift.a.z-c.lift.dir.z*2.5};
-  else s.dest={x:c.run.sm[0].x,z:c.run.sm[0].z};
+  else{const q=c.run.sm[c.i||0];s.dest={x:q.x,z:q.z}}
 }
 function leave(s,delay){if(s.patrol){s.state='leave';s.fade=1;return}
   if(minutes>13*60&&s.state!=='leave'&&!s.after?.sleep&&Math.random()<.8){const beds=buildings.filter(b=>BT[b.type].guests&&(b.tonight||0)<Math.round(BT[b.type].guests*bMul(b)));if(beds.length){const B=beds[(Math.random()*beds.length)|0];
@@ -1155,7 +1157,7 @@ function updateSkier(s,dt){
       else if(a.ticket){s.state='ticket';s.t=1.2+Math.random()*1.6}
       else if(a.eat){if(!buildings.includes(a.eat))return decide(s);const D=doorOf(a.eat);s.state='enter';s.t=2.2;s.inD=D;s.then='eat';s.eatAt=a.eat}
       else if(a.lift){if(!lifts.includes(a.lift))return decide(s);s.state='queue';s.lift=a.lift;s.wait=0;a.lift.queue.push(s)}
-      else{if(!runs.includes(a.run)||(isNight()&&!a.run.lit))return decide(s);s.state='ski';s.run=a.run;s.lastRun=a.run;s.v=2;s.lane=(Math.random()-.5)*(a.run.w||3.9)*.7;s.turnA=(.6+Math.random()*.5)*(2.3-s.skill*.4);s.turnK=.26+Math.random()*.1+s.skill*.03;s.d=0;a.run.skiers++}
+      else{if(!runs.includes(a.run)||(isNight()&&!a.run.lit))return decide(s);s.state='ski';s.run=a.run;s.lastRun=a.run;s.v=2;s.lane=(Math.random()-.5)*(a.run.w||3.9)*.7;s.turnA=(.6+Math.random()*.5)*(2.3-s.skill*.4);s.turnK=.26+Math.random()*.1+s.skill*.03;s.d=(a.i||0)*(a.run.step||1);a.run.skiers++}
     }else{s.pos.x+=dx/l*sp;s.pos.z+=dz/l*sp;m.rotation.y=Math.atan2(dx,dz)}
     s.pos.y=meshH(s.pos.x,s.pos.z)+(onAnyRun(s.pos)?.5:.25);m.position.copy(s.pos);m.position.y+=Math.abs(Math.sin(performance.now()/150+s.phase))*.12;m.rotation.z=0;m.rotation.x=0;
   }else if(s.state==='ticket'){s.t-=dt;m.position.copy(s.pos);m.rotation.set(0,-Math.PI/2,0);if(s.t<=0){if(Math.random()<.15)burst(new THREE.Vector3(s.pos.x,s.pos.y+3,s.pos.z),'🎟');s.state='walk';s.dest={x:BASE.x+(Math.random()-.5)*10,z:BASE.z-6};s.after=null}
@@ -1253,7 +1255,7 @@ const PROBS={
   broken:{fix:'Мастерская чинит подъёмники сама, и поломок вдвое меньше.',btn:'🔧 Мастерская',go:()=>{bType='workshop';setTool('build')}},
   slush:{fix:'Снежные пушки спасают трассы в оттепель (Осмотр → трасса → ❄️).',btn:'❄️ Пушки',go:()=>{bType='cannon';setTool('build')}}};
 // where does this run end? true if guests can continue from there
-function runEndOk(R){const p=R.sm[R.sm.length-1];return d2(p,BASE)<BASE_LINK||lifts.some(L=>d2(p,L.a)<LINK)||runs.some(O=>O!==R&&d2(p,O.sm[0])<LINK)||buildings.some(b=>(BT[b.type].guests||BT[b.type].food)&&Math.hypot(p.x-b.x,p.z-b.z)<b.rad+16)}
+function runEndOk(R){const p=R.sm[R.sm.length-1];return d2(p,BASE)<BASE_LINK||lifts.some(L=>d2(p,L.a)<LINK)||runs.some(O=>O!==R&&d2(p,O.sm[0])<LINK)||!!mergeInto(p,R)||buildings.some(b=>(BT[b.type].guests||BT[b.type].food)&&Math.hypot(p.x-b.x,p.z-b.z)<b.rad+16)}
 let flashM=null,flashT=0;
 function flashAt(p){if(!flashM){flashM=new THREE.Mesh(new THREE.RingGeometry(3,4.2,40),new THREE.MeshBasicMaterial({color:0xef4444,transparent:true,depthTest:false,side:THREE.DoubleSide}));flashM.rotation.x=-Math.PI/2;flashM.renderOrder=20;scene.add(flashM)}
   flashM.position.set(p.x,meshH(p.x,p.z)+1,p.z);flashM.visible=true;flashT=6;const b=burst(new THREE.Vector3(p.x,meshH(p.x,p.z)+6,p.z),'⚠ здесь')}
@@ -1527,6 +1529,7 @@ function endHint(p){
   if(d2(p,BASE)<BASE_LINK)return '<span class="okc">✓ конец у базы</span>';
   if(lifts.some(L=>d2(p,L.a)<LINK))return '<span class="okc">✓ конец у подъёмника</span>';
   if(runs.some(R=>d2(p,R.sm[0])<LINK))return '<span class="okc">✓ переходит в другую трассу</span>';
+  {const m=mergeInto(p,editRun);if(m)return `<span class="okc">✓ вливается в ${m.O.name} — гости поедут по ней дальше</span>`}
   {const b=buildings.find(b=>(BT[b.type].guests||BT[b.type].food)&&Math.hypot(p.x-b.x,p.z-b.z)<b.rad+16);if(b)return `<span class="okc">✓ прямо к зданию «${BT[b.type].n}» — гости доедут на лыжах</span>`+(lifts.some(L=>d2(p,L.a)<LINK)||d2(p,BASE)<BASE_LINK?'':' <span class="wrn">(но обратно наверх подъёмника нет)</span>')}
   {let bd=1e9,nm='';lifts.forEach(L=>{const d=d2(p,L.a);if(d<bd){bd=d;nm='к нижней станции: '+L.name}});const db=d2(p,BASE);if(db<bd){bd=db;nm='к базе'}
    return `<span class="wrn">⚠ конец никуда не ведёт — гости застрянут. Дотяни ${nm} (ещё ${M(Math.max(0,bd-LINK))} м) до жёлтого круга</span>`}
