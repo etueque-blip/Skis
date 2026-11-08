@@ -1961,11 +1961,12 @@ function buildRoad(){for(let z=BASE.z+19;z<RS/2-2;z+=2)ROAD.push({x:6+Math.sin(z
   const bank=ROAD.map(p=>({...p}));scene.add(ribbon(bank,5.2,0xe2e8f0,.9));
   const mid=ribbon(ROAD,.16,0xfacc15,1,false,dashTex);mid.position.y=.03;scene.add(mid);
   {const rl=new THREE.Group();lampSet(edgePoints(ROAD,12,6.4,true).filter(p=>Math.hypot(p.x-BASE.x,p.z-BASE.z)>26&&ROAD.every((q,i)=>i%2||Math.hypot(q.x-p.x,q.z-p.z)>5.2)),rl);scene.add(rl)}}
-function roadAt(d,side,out){d=clamp(d,0,ROAD.len);let i=0;while(i<ROAD.length-2&&ROAD[i+1].c<d)i++;const a=ROAD[i],b=ROAD[i+1],t=(d-a.c)/((b.c-a.c)||1);
-  let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const x=a.x+(b.x-a.x)*t-tz*1.7*side,z=a.z+(b.z-a.z)*t+tx*1.7*side;out.set(x,meshH(x,z)+.47,z);return Math.atan2(tx,tz)}
+let CARP=null;
+function roadAt(d,side,out){const P=CARP||ROAD;d=clamp(d,0,P.len);let i=0;while(i<P.length-2&&P[i+1].c<d)i++;const a=P[i],b=P[i+1],t=(d-a.c)/((b.c-a.c)||1);
+  let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const x=a.x+(b.x-a.x)*t-tz*1.7*side,z=a.z+(b.z-a.z)*t+tx*1.7*side;out.set(x,a.ry!==undefined?a.ry+(b.ry-a.ry)*t+.02:meshH(x,z)+.47,z);return Math.atan2(tx,tz)}
 const cars=[];
-function spawnCar(dir){if(!ROAD.length||cars.length>=18)return;const g=new THREE.Mesh(carGeo(CARC[(Math.random()*CARC.length)|0]),vcMat);g.castShadow=true;scene.add(g);cars.push({g,dir,d:dir<0?ROAD.len:0,v:11+Math.random()*4})}
-function updCars(dt){for(let i=cars.length-1;i>=0;i--){const c=cars[i];c.d+=c.dir*c.v*dt;const end=c.dir<0?c.d<=0:c.d>=ROAD.len;
+function spawnCar(dir){if(!ROAD.length||cars.length>=18)return;const g=new THREE.Mesh(carGeo(CARC[(Math.random()*CARC.length)|0]),vcMat);g.castShadow=true;scene.add(g);cars.push({g,dir,d:dir<0?(CARP||ROAD).len:0,v:11+Math.random()*4})}
+function updCars(dt){for(let i=cars.length-1;i>=0;i--){const c=cars[i];c.d+=c.dir*c.v*dt;const end=c.dir<0?c.d<=0:c.d>=(CARP||ROAD).len;
   const yaw=roadAt(c.d,c.dir<0?1:-1,c.g.position);c.g.rotation.y=yaw+(c.dir<0?Math.PI:0);if(end){scene.remove(c.g);cars.splice(i,1)}}}
 /* ================= ride mode v2: ski your own run ================= */
 const RSC=.5;// ride scale: rider metres -> world units
@@ -2406,14 +2407,40 @@ function frame(now){
 // former resorts glow on the far horizon behind the mountain
 META.list.filter(r=>r.n<RESORT).forEach((r,i,a)=>{const I=resortInfo(r),x=(i-(a.length-1)/2)*260,z=-760,y=300;const l=label(`🏔️ Курорт №${r.n} · ур. ${I.lvl}`,'#fde68a',.15);l.material.fog=false;l.position.set(x,y+60,z);scene.add(l);
   const pts=[];for(let k=0;k<40;k++)pts.push(x+(Math.random()-.5)*120,y-60+Math.random()*90,z+(Math.random()-.5)*40);const p=new THREE.Points(new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute(pts,3)),lampGlowMat);p.material.fog=false;scene.add(p)});
-{const pts=[];for(let k=0;k<9000&&pts.length<(HIQ?5000:2200);k++){const a=hash(k,71)*6.283,r=310+Math.pow(hash(k,72),1.6)*520,x=Math.cos(a)*r,z=Math.sin(a)*r;if(Math.abs(x)<300&&Math.abs(z)<300)continue;if(fbm(x*.012+3,z*.012,4)<.5)continue;if(Math.abs(x-6)<14&&z>290)continue;pts.push([x,z])}
- const im=new THREE.InstancedMesh(treeGeo,new THREE.MeshLambertMaterial({color:0x1f5f3a}),pts.length);pts.forEach(([x,z],i)=>{const sc=1+hash(i,73)*.8;_m.makeScale(sc,sc*1.1,sc).setPosition(x,skirtH(x,z)-.3,z);im.setMatrixAt(i,_m)});scene.add(im)}
 buildRoad();window.roadReady=true;
-{const pts=[];let x=ROAD.length?ROAD[ROAD.length-1].x:6;for(let z=(ROAD.length?ROAD[ROAD.length-1].z:296);z<2600;z+=6){const xx=x+Math.sin(z*.006)*70*sstep(300,700,z);pts.push([xx,z])}
- const pos=[],idx=[];pts.forEach(([x,z],i)=>{const n=pts[Math.min(i+1,pts.length-1)],p0=pts[Math.max(i-1,0)];let tx=n[0]-p0[0],tz=n[1]-p0[1];const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const w=4.2;
-   for(const sd of [1,-1]){const X=x-tz*w*sd,Z=z+tx*w*sd;pos.push(X,skirtH(X,Z)+.6,Z)}if(i<pts.length-1){const k=i*2;idx.push(k,k+2,k+1,k+1,k+2,k+3)}});
- const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();
- const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:0x384150,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4}));scene.add(m)}buildings.forEach(accessRoad);
+{const pts=[];for(let k=0;k<9000&&pts.length<(HIQ?5000:2200);k++){const a=hash(k,71)*6.283,r=310+Math.pow(hash(k,72),1.6)*520,x=Math.cos(a)*r,z=Math.sin(a)*r;if(Math.abs(x)<300&&Math.abs(z)<300)continue;if(fbm(x*.012+3,z*.012,4)<.5)continue;if(z>280&&z<960&&Math.abs(x-(ROAD[ROAD.length-1].x+Math.sin(z*.006)*55*sstep(300,700,z)-Math.sin(ROAD[ROAD.length-1].z*.006)*55*sstep(300,700,ROAD[ROAD.length-1].z)))<16)continue;if(z>700&&z<1250&&Math.abs(x-ROAD[ROAD.length-1].x)<300)continue;pts.push([x,z])}
+ const im=new THREE.InstancedMesh(treeGeo,new THREE.MeshLambertMaterial({color:0x1f5f3a}),pts.length);pts.forEach(([x,z],i)=>{const sc=1+hash(i,73)*.8;_m.makeScale(sc,sc*1.1,sc).setPosition(x,skirtH(x,z)-.3,z);im.setMatrixAt(i,_m)});scene.add(im)}
+{const L0=ROAD[ROAD.length-1],TZ=900,pts=[];let x0=L0.x;for(let z=L0.z;z<=TZ;z+=4){const xx=x0+Math.sin(z*.006)*55*sstep(300,700,z)-Math.sin(L0.z*.006)*55*sstep(300,700,L0.z);pts.push({x:xx,z})}
+ // height: on the map follow the drawn terrain, outside follow the outer lands, blended so there is no step
+ const rh=(X,Z)=>{const d=Math.max(Math.abs(X),Math.abs(Z))-298;return d<=0?meshH(X,Z)+.45:(skirtH(X,Z)+.62)*sstep(0,14,d)+(meshH(clamp(X,-298,298),clamp(Z,-298,298))+.45)*(1-sstep(0,14,d))};
+ const strip=(w,col,yo,tex)=>{const pos=[],idx=[],uv=[];let cum=0;pts.forEach((p,i)=>{const n=pts[Math.min(i+1,pts.length-1)],q=pts[Math.max(i-1,0)];let tx=n.x-q.x,tz=n.z-q.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;if(i)cum+=Math.hypot(p.x-pts[i-1].x,p.z-pts[i-1].z);
+   for(const sd of [1,-1]){const X=p.x-tz*w*sd,Z=p.z+tx*w*sd;pos.push(X,rh(X,Z)+yo,Z)}uv.push(0,cum/5,1,cum/5);if(i<pts.length-1){const k=i*2;idx.push(k,k+2,k+1,k+1,k+2,k+3)}});
+   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();
+   const m=new THREE.Mesh(g,new THREE.MeshLambertMaterial({color:col,map:tex||null,alphaTest:tex?.5:0,transparent:!!tex,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4}));m.receiveShadow=true;scene.add(m);return m};
+ {const bk=strip(5.4,0xe2e8f0,-.3);bk.material.polygonOffset=false;strip(4.2,0x384150,0);const dl=strip(.16,0xfacc15,.07,dashTex);dl.material.polygonOffsetFactor=-6;dl.material.polygonOffsetUnits=-6}
+ // car path continues through the outer road into the tunnel
+ CARP=ROAD.map(p=>({x:p.x,z:p.z}));pts.slice(1).forEach(p=>CARP.push({x:p.x,z:p.z,ry:rh(p.x,p.z)}));let c=0;CARP.forEach((p,i)=>{if(i)c+=Math.hypot(p.x-CARP[i-1].x,p.z-CARP[i-1].z);p.c=c});CARP.len=c;
+ // lamps and tall firs along the outer road
+ {const lp=[];for(let i=6;i<pts.length-4;i+=7){const p=pts[i],n=pts[i+1],tx=n.x-p.x,tz=n.z-p.z,l=Math.hypot(tx,tz)||1,sd=(i/7|0)%2?1:-1;const X=p.x-tz/l*6.4*sd,Z=p.z+tx/l*6.4*sd;lp.push({x:X,z:Z,y:rh(X,Z)-.45})}
+  const lg=new THREE.Group();lampSet(lp.filter(q=>Math.max(Math.abs(q.x),Math.abs(q.z))<298),lg);scene.add(lg);
+  const far=lp.filter(q=>Math.max(Math.abs(q.x),Math.abs(q.z))>=298);if(far.length){const post=new THREE.InstancedMesh(lampPostGeo,mat(0x334155),far.length),head=new THREE.InstancedMesh(lampHeadGeo,mat(0xfef3c7),far.length);far.forEach((q,k)=>{_m.makeTranslation(q.x,q.y,q.z);post.setMatrixAt(k,_m);head.setMatrixAt(k,_m)});scene.add(post,head);
+   const gp=[];far.forEach(q=>gp.push(q.x,q.y+6.1,q.z));const pp=new THREE.Points(new THREE.BufferGeometry().setAttribute('position',new THREE.Float32BufferAttribute(gp,3)),lampGlowMat);scene.add(pp)}}
+ {const tt=[];for(let i=0;i<pts.length;i+=2)for(const sd of [-1,1])for(let r=0;r<2;r++){const p=pts[i],off=(9+r*7+hash(i*3+r,91)*6)*sd,n=pts[Math.min(i+1,pts.length-1)],q=pts[Math.max(i-1,0)],tx=n.x-q.x,tz=n.z-q.z,l=Math.hypot(tx,tz)||1;const X=p.x-tz/l*off,Z=p.z+tx/l*off;if(Math.max(Math.abs(X),Math.abs(Z))<300||hash(i,93+r)<.25)continue;tt.push([X,Z,1.8+hash(i,95+r)*1.6])}
+  const im=new THREE.InstancedMesh(treeGeo,new THREE.MeshLambertMaterial({color:0x1d5434}),tt.length);tt.forEach(([X,Z,sc],k)=>{_m.makeScale(sc,sc*1.25,sc).setPosition(X,skirtH(X,Z)-.4,Z);im.setMatrixAt(k,_m)});im.castShadow=true;scene.add(im)}
+ // the big mountain with a tunnel portal at the end of the road
+ {const E=pts[pts.length-1],P=pts[pts.length-3],dx=E.x-P.x,dz=E.z-P.z,l=Math.hypot(dx,dz)||1,ux=dx/l,uz=dz/l,ang=Math.atan2(ux,uz),gy=rh(E.x,E.z)-.6;
+  const mg=new THREE.ConeGeometry(260,330,10,4);const mp=mg.attributes.position;for(let i=0;i<mp.count;i++){const y=mp.getY(i),k=(y+165)/330;mp.setX(i,mp.getX(i)*(1+.18*Math.sin(i*1.7)*(1-k)));mp.setZ(i,mp.getZ(i)*(1+.18*Math.cos(i*2.3)*(1-k)))}mg.computeVertexNormals();
+  const cols=new Float32Array(mp.count*3);for(let i=0;i<mp.count;i++){const k=(mp.getY(i)+165)/330,sn=k>.35?1:k/.35;cols.set([.55+.4*sn,.58+.38*sn,.63+.35*sn],i*3)}mg.setAttribute('color',new THREE.BufferAttribute(cols,3));
+  const mt=new THREE.Mesh(mg,new THREE.MeshLambertMaterial({vertexColors:true}));mt.position.set(E.x+ux*235,gy+150,E.z+uz*235);scene.add(mt);
+  const g=new THREE.Group();g.position.set(E.x,gy,E.z);g.rotation.y=ang+Math.PI;scene.add(g);
+  const cmat=mat(0x9ca3af);g.add(box(20,15,4,0x9ca3af,0,7.5,-1.5));                               // portal wall
+  const arch=new THREE.Mesh(new THREE.CylinderGeometry(6.2,6.2,4.4,20,1,false,0,Math.PI),mat(0x0b0f17));arch.rotation.z=Math.PI/2;arch.rotation.y=Math.PI/2;arch.position.set(0,5.2,-1.2);g.add(arch);
+  g.add(box(12.4,5.2,4.4,0x0b0f17,0,2.6,-1.2));const rim=new THREE.Mesh(new THREE.TorusGeometry(6.4,.45,6,20,Math.PI),mat(0xd1d5db));rim.position.set(0,5.2,.6);g.add(rim);g.add(box(.9,5.2,.9,0xd1d5db,-6.4,2.6,.6),box(.9,5.2,.9,0xd1d5db,6.4,2.6,.6));
+  g.add(box(21,.8,4.6,0xf8fafc,0,15.3,-1.5));const tl=label('🏔️ ТОННЕЛЬ · КУРОРТ 2 КМ','#fde68a',.12);tl.position.set(0,13,.8);g.add(tl);
+  for(const x of [-4.8,-1.6,1.6,4.8]){const lm=new THREE.Mesh(new THREE.BoxGeometry(.9,.25,.25),winMat);lm.position.set(x,10.6,-.6);g.add(lm)}
+  for(const sd of [-1,1])g.add(box(6,9,30,0xa8b0bd,sd*13,4.5,-14));g.traverse(o=>{if(o.isMesh)o.castShadow=true});clearTrees([{x:E.x,z:E.z}],30)}
+}
+buildings.forEach(accessRoad);
 drawBorder();renderQuest();setTool('look');applyQuality(Q,false);
 requestAnimationFrame(frame);runLoader();
 /*PWA*/(function(){const inTg=/tgWebApp/.test(location.hash+location.search);
