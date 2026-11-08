@@ -928,18 +928,31 @@ const bUpCost=b=>Math.round((MAP.easy?.75:1)*BT[b.type].cost*[1,2,4,8][(b.lvl||1
 const GROW=[1,1.1,1.22,1.36,1.55];const WALL=[null,0x8b5a2b,0x6b3f1f,0x4a2c17,0x2b1a10];
 function decorateLevel(B){if(B.deco){B.g.remove(B.deco);B.deco=null}const L=B.lvl||1;
   const model=B.g.children[0],grows2=B.type!=='hotel'&&(BT[B.type].guests||BT[B.type].food);
+  if(model&&B.type!=='hotel'&&!grows2){const k=[1,1.06,1.12,1.18,1.25][L-1];model.scale.set(k,k,k)}
   if(model&&grows2){const k=GROW[L-1];model.scale.set(k,k,k);if(WALL[L-1]&&B.type==='chalet')model.traverse(o=>{if(o.isMesh&&o.material&&o.material.color&&o.material.color.getHex()===0x8b5a2b){o.material=o.material.clone();o.material.color.setHex(WALL[L-1])}})}
-  if(L>=5)clearTreesRect(B.x+(B.fw/2+5),B.z,B.fw/2+12,B.fd/2+9,0);
+  if(L>=5&&BT[B.type].guests)clearTreesRect(B.x+(B.fw/2+5),B.z,B.fw/2+12,B.fd/2+9,0);
+  if(L>=2&&BT[B.type].food)clearTreesRect(B.x+(B.fw/2+4),B.z,B.fw/2+8,B.fd/2+4,0);
   if(L<2)return;const kk=B.type!=='hotel'&&(BT[B.type].guests||BT[B.type].food)?GROW[L-1]:1,d=new THREE.Group(),T=BT[B.type],hw=B.fw/2*kk,hd=B.fd/2*kk,top=(B.type==='hotel'?13.5:B.type==='parking'?1:6)*kk;
   // gold trim, flags, and for the top level a glowing roof sign
   const gold=new THREE.MeshPhongMaterial({color:0xfacc15,shininess:120,specular:0xffffff,emissive:0x5a4000});
   for(const [x,z] of [[-hw,-hd],[hw,-hd],[-hw,hd],[hw,hd]]){const pole=new THREE.Mesh(new THREE.CylinderGeometry(.08,.08,3,6),mat(0xe5e7eb));pole.position.set(x,top+1.5,z);d.add(pole);
     if(L>=3){const fl=new THREE.Mesh(new THREE.PlaneGeometry(1.1,.65),new THREE.MeshLambertMaterial({color:[0xdc2626,0x2563eb,0x16a34a,0xfacc15][(x>0)*2+(z>0)],side:THREE.DoubleSide}));fl.position.set(x+.55,top+2.6,z);fl.userData.flag=1;d.add(fl)}}
-  const trim=new THREE.Mesh(new THREE.BoxGeometry(B.fw+.4,.18,B.fd+.4),gold);trim.position.y=.25;d.add(trim);
+  if(B.type!=='parking'){const trim=new THREE.Mesh(new THREE.BoxGeometry(B.fw+.4,.18,B.fd+.4),gold);trim.position.y=.25;d.add(trim)}
   if(L>=3&&T.guests&&B.type!=='hotel'){const ext=new THREE.Mesh(new THREE.BoxGeometry(B.fw*.6,2.2,B.fd*.6),mat(B.type==='hotel'?0xe9dcc4:0x8b5a2b));ext.position.y=top+.6;d.add(ext);for(let k=-1;k<=1;k++){const w=new THREE.Mesh(new THREE.PlaneGeometry(.9,1),winMat);w.position.set(k*B.fw*.18,top+.7,-B.fd*.3-.01);w.rotation.y=Math.PI;d.add(w)}}
   if(L>=4){const st=label('✦ '+lvlNames(B)[L-1]+' ✦','#fde047',.13);st.position.y=top+4.5;d.add(st);const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,color:0xffd36b,transparent:true,depthWrite:false,blending:THREE.AdditiveBlending}));glow.scale.set(14,14,1);glow.position.y=top+1;d.add(glow);
   }
-  if(L>=5){// pool with a deck, loungers and a steaming hot tub
+  if(L>=2&&T.food){// restaurants & cafés: a veranda that grows with the level (L4+: glass winter garden)
+    const gy=(lx,lz)=>meshH(B.x+lx,B.z+lz)-B.y,vW=4+L*1.6,vD=B.fd*kk*.9,vx=hw+vW/2+.2;let vy=-1e9;for(const [a,b] of [[-1,-1],[1,-1],[-1,1],[1,1],[0,0]])vy=Math.max(vy,gy(vx+a*vW/2,b*vD/2));vy+=.4;
+    for(let k=0;k<Math.round(vD/1.1);k++)d.add(box(vW,.2,1.02,k%2?0x9a6b45:0x8a5a35,vx,vy,-vD/2+(k+.5)*vD/Math.round(vD/1.1)));
+    for(const [a,b] of [[-1,-1],[1,-1],[-1,1],[1,1]]){const lx=vx+a*(vW/2-.3),lz=b*(vD/2-.3),g0=gy(lx,lz),h=vy-g0+.2;if(h>.25)d.add(box(.3,h,.3,0x5b3a24,lx,g0+h/2-.1,lz))}
+    d.add(box(.12,.9,vD,0x5b3a24,vx+vW/2,vy+.55,0));for(const sd of [-1,1])d.add(box(vW,.9,.12,0x5b3a24,vx,vy+.55,sd*vD/2));
+    const nt=Math.max(1,Math.floor(vD/3.2));for(let k=0;k<nt;k++){const z=-vD/2+(k+.5)*vD/nt;d.add(box(1.3,.1,.9,0x7c4a26,vx,vy+.85,z),box(.1,.7,.1,0x5b3a24,vx,vy+.45,z),box(1.3,.1,.35,0x5b3a24,vx,vy+.5,z-.75),box(1.3,.1,.35,0x5b3a24,vx,vy+.5,z+.75));
+      if(L<4){d.add(box(.07,2,.07,0x334155,vx,vy+1.6,z));const um=new THREE.Mesh(new THREE.ConeGeometry(1.3,.6,10),mat(k%2?0xf8fafc:0xef4444));um.position.set(vx,vy+2.7,z);d.add(um)}}
+    if(L>=4){const gm=new THREE.MeshPhongMaterial({color:0xbfe3ff,transparent:true,opacity:.35,shininess:120,specular:0xffffff,depthWrite:false});
+      const gx=new THREE.Mesh(new THREE.BoxGeometry(vW-.2,2.6,vD-.2),gm);gx.position.set(vx,vy+1.4,0);d.add(gx);d.add(box(vW+.3,.25,vD+.3,0x334155,vx,vy+2.8,0),box(vW,.18,vD,0xf8fafc,vx,vy+2.98,0));
+      for(let k=0;k<=3;k++)d.add(box(.12,2.6,.12,0x334155,vx-vW/2+k*vW/3,vy+1.4,vD/2),box(.12,2.6,.12,0x334155,vx-vW/2+k*vW/3,vy+1.4,-vD/2));
+      for(const z of [-vD/4,vD/4]){const lt=new THREE.Mesh(new THREE.BoxGeometry(.5,.15,.5),winMat);lt.position.set(vx,vy+2.6,z);d.add(lt)}}}
+  if(L>=5&&T.guests){// pool with a deck, loungers and a steaming hot tub
     const gy=(lx,lz)=>meshH(B.x+lx,B.z+lz)-B.y;
     {const W=B.fw*kk+22,Dp=B.fd*kk+14,pg=new THREE.PlaneGeometry(W,Dp,16,12);pg.rotateX(-Math.PI/2);const P=pg.attributes.position;for(let k=0;k<P.count;k++){const x=P.getX(k)+5,z=P.getZ(k);P.setXYZ(k,x,gy(x,z)+.12,z)}pg.computeVertexNormals();
      const plot=new THREE.Mesh(pg,new THREE.MeshLambertMaterial({color:0xd6dde6,polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3}));plot.receiveShadow=true;d.add(plot)}
@@ -1416,13 +1429,13 @@ function persist(dayOverride){
   try{const cut=[];for(let i=0;i<BASE_TREES;i++)if(!trees[i].on)cut.push(i);const rocksOff=ROCKS.filter(r=>!r.on).map(r=>r.i);
     localStorage.setItem(SAVE_KEY,JSON.stringify({v:2,seed,money:Math.round(money),price,day:dayOverride||dayN,rocksOff,map:MAPK,medals,ratingHist,dayHist,quest:questI,xp,rideDone,best,owned:[...owned],qReady:questReady,daily,dailyDay:dayN,gift1m:giftGiven,weather,forecast,
     lifts:lifts.map(L=>({n:L.name,t:L.type,c:L.col,u:L.turbo||0,a:[L.a.x,L.a.z],b:[L.b.x,L.b.z]})),runs:runs.map(R=>({n:R.name,w:R.w,p:R.pts.map(p=>[p.x,p.z]),l:R.lit?1:0,s:R.snow?1:0})),
-    blds:(moveB?buildings.concat([moveB]):buildings).map(b=>({t:b.type,x:b.x,z:b.z,r:b.rot,l:b.lvl||1})),cut,planted:trees.slice(BASE_TREES).filter(t=>t.on).map(t=>[+t.x.toFixed(1),+t.z.toFixed(1)])}))}catch(e){}
+    blds:(moveB?buildings.concat([moveB]):buildings).map(b=>({t:b.type,x:b.x,z:b.z,r:b.rot,l:b.lvl||1,s:b.summit?1:0})),cut,planted:trees.slice(BASE_TREES).filter(t=>t.on).map(t=>[+t.x.toFixed(1),+t.z.toFixed(1)])}))}catch(e){}
 }
 function addTree(x,z){if(trees.length>=TREE_CAP)return false;const i=trees.length;trees.push({x,z,y:heightAt(x,z),s:.7+Math.random()*.6,on:true});setTree(i);colorTree(i);return true}
 if(save){
   (save.cut||[]).forEach(i=>{if(trees[i]){trees[i].on=false;setTree(i)}});(save.rocksOff||[]).forEach(i=>{const r=ROCKS.find(q=>q.i===i);if(r)removeRock(r)});
   (save.planted||[]).forEach(p=>addTree(p[0],p[1]));treesChanged();
-  (save.blds||[]).forEach(b=>{const B=makeBuilding(b.t,b.x,b.z,b.r,true);B.lvl=b.l||1;decorateLevel(B)});
+  (save.blds||[]).forEach(b=>{const B=makeBuilding(b.t,b.x,b.z,b.r,true);B.lvl=b.l||1;decorateLevel(B);if(b.s){B.summit=1;addSummitDeck(B)}});
   (save.lifts||[]).forEach(l=>{const L0=makeLift(new THREE.Vector3(l.a[0],heightAt(l.a[0],l.a[1]),l.a[1]),new THREE.Vector3(l.b[0],heightAt(l.b[0],l.b[1]),l.b[1]),l.t||'chair',l.n,l.c);if(l.u){L0.turbo=l.u;applyTurbo(L0)}});
   (save.runs||[]).forEach(r=>{const R=makeRun(r.p.map(p=>({x:p[0],z:p[1]})),r.n,r.w);if(r.l){R.lit=true;addLamps(R)}if(r.s){R.snow=true;addCannons(R)}});refreshRunDeco();skiInPass();
 }
@@ -1590,6 +1603,7 @@ function showInfo(o,live){
     if(live){$('iStats').innerHTML=h.replace(/^<h3>.*?<\/h3>/s,'');return}
     h=h.replace(/(<\/h3>)([\s\S]*)$/,'$1<div id="iStats">$2</div>');
     {const tl=o.turbo||0;h+=`<div class="r"><span>Турбо</span><b>${tl?'⚡'.repeat(tl):'нет'}</b></div>`;if(tl<3){const c=turboCost(o);h+=`<div class="cb"><button class="btn pri" id="iTurbo" ${money>=c?'':'disabled'}>⚡ Турбо ${tl+1}: быстрее на 25% · ${fmt(c)}</button></div>`}}
+    if(!buildings.some(b=>b.summit&&d2(b,o.b)<45)){const c=summitCost();h+=`<div class="cb"><button class="btn" id="iSummit" ${money>=c?'':'disabled'}>🏔 Ресторан наверху с площадкой · ${fmt(c)}</button></div><div class="r" style="display:block"><span>Сам найду место у верхней станции, поставлю деревянную площадку и ресторан с видом.</span></div>`}
     h+=`<div class="cb"><button class="btn" id="iCol">🎨 Цвет <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#${o.col.toString(16).padStart(6,'0')};vertical-align:-1px"></span></button></div>`;
     if(o.broken)h+=`<div class="cb"><button class="btn pri" id="iFix">🔧 Починить ${fmt(repairCost(o))}</button></div>`;
     const up=o.type==='chair'?'gondola':o.type==='tbar'?'chair':null;
@@ -1613,7 +1627,7 @@ function showInfo(o,live){
   }
   h+=`<div class="cb">${o.kind==='bld'?'<button class="btn" id="iMove">↔ Переместить</button>':''}<button class="btn red" id="iDel">🧨 Снести</button></div>`;
   el.innerHTML=h;$('iX').onclick=hideInfo;$('iDel').onclick=()=>{setTool('del');selDel=o;refresh()};if($('iMove'))$('iMove').onclick=()=>startMove(o);
-  if($('iUp'))$('iUp').onclick=()=>upgradeLift(o);if($('iCol'))$('iCol').onclick=()=>recolorLift(o);if($('iBUp'))$('iBUp').onclick=()=>upgradeBuilding(o);if($('iTurbo'))$('iTurbo').onclick=()=>turboLift(o);if($('iFix'))$('iFix').onclick=()=>repairLift(o);if($('iEdit'))$('iEdit').onclick=()=>startEditRun(o);if($('iWide'))$('iWide').onclick=()=>widenRun(o);if($('iRide'))$('iRide').onclick=()=>rideIntro(o);if($('iLamp'))$('iLamp').onclick=()=>buyRunUpgrade(o,'lit');if($('iSnow'))$('iSnow').onclick=()=>buyRunUpgrade(o,'snow');
+  if($('iUp'))$('iUp').onclick=()=>upgradeLift(o);if($('iCol'))$('iCol').onclick=()=>recolorLift(o);if($('iBUp'))$('iBUp').onclick=()=>upgradeBuilding(o);if($('iTurbo'))$('iTurbo').onclick=()=>turboLift(o);if($('iSummit'))$('iSummit').onclick=()=>buildSummit(o);if($('iFix'))$('iFix').onclick=()=>repairLift(o);if($('iEdit'))$('iEdit').onclick=()=>startEditRun(o);if($('iWide'))$('iWide').onclick=()=>widenRun(o);if($('iRide'))$('iRide').onclick=()=>rideIntro(o);if($('iLamp'))$('iLamp').onclick=()=>buyRunUpgrade(o,'lit');if($('iSnow'))$('iSnow').onclick=()=>buyRunUpgrade(o,'snow');
 }
 function hideInfo(){infoObj=null;$('info').style.display='none'}
 const turboCost=L=>Math.round((LT[L.type].cost(L.len,L.b.y-L.a.y))*[.35,.6,1][L.turbo||0]/100)*100;
@@ -1661,6 +1675,23 @@ function buildRun(){
   let keepW,keepLit,keepSnow,keepName;if(editRun){const o=editRun;keepW=o.w;keepLit=o.lit;keepSnow=o.snow;keepName=o.name;skiers.forEach(s=>{if(s.run===o&&s.state==='ski')leave(s)});scene.remove(o.g);runs.splice(runs.indexOf(o),1);editRun=null}
   money-=price;day.build+=price;day.builtN++;addXP(15);const R=makeRun(runPts,keepName,keepW);if(keepLit){R.lit=true;addLamps(R)}if(keepSnow){R.snow=true;addCannons(R)}refreshRunDeco();skiInPass();burst(R.sm[0],`${DIFF[R.diff].s} -${fmt(c.cost)}`);toast(`${DIFF[R.diff].s} ${R.name} открыта!`);runPts=[];hover=null;refreshRings();refresh();persist();checkQuest();
 }
+const summitCost=()=>Math.round(BT.restaurant.cost*1.4/100)*100;
+function addSummitDeck(B){const g=new THREE.Group(),gy=(lx,lz)=>meshH(B.x+lx,B.z+lz)-B.y,W=B.fw+9,D=B.fd+9;let top=-1e9;for(let a=-1;a<=1;a++)for(let b=-1;b<=1;b++)top=Math.max(top,gy(a*W/2,b*D/2));top=Math.max(0,top)+.25;
+  for(let k=0;k<Math.round(D/1.2);k++)g.add(box(W,.22,1.12,k%2?0x9a6b45:0x8a5a35,0,top,-D/2+(k+.5)*D/Math.round(D/1.2)));
+  for(let a=-1;a<=1;a+=.5)for(const b of [-1,1]){const lx=a*(W/2-.4),lz=b*(D/2-.4),g0=gy(lx,lz),h=top-g0+.3;if(h>.3)g.add(box(.35,h,.35,0x5b3a24,lx,g0+h/2-.15,lz))}
+  for(const sd of [-1,1]){g.add(box(W,.9,.12,0x5b3a24,0,top+.55,sd*D/2));g.add(box(.12,.9,D,0x5b3a24,sd*W/2,top+.55,0))}
+  for(const [x,z] of [[W/2-1.2,-D/2+1.2],[-W/2+1.2,-D/2+1.2]]){g.add(box(.15,1.2,.15,0x334155,x,top+.7,z));const sc=box(.25,.25,.7,0x111827,x,top+1.35,z);sc.rotation.x=-.3;g.add(sc)}
+  for(let k=0;k<3;k++)g.add(box(1.6,.15,.5,0x7c4a26,-W/2+3+k*3,top+.5,D/2-1),box(1.6,.5,.12,0x7c4a26,-W/2+3+k*3,top+.75,D/2-.8));
+  const sg=label('🏔 Вершина','#bae6fd',.08);sg.position.set(0,top+12,0);g.add(sg);
+  B.g.children[0].position.y=top-.05;g.traverse(o=>{if(o.isMesh)o.castShadow=true});B.g.add(g);B.summitDeck=g}
+function buildSummit(L){const c=summitCost();if(money<c)return toast('Не хватает денег',1);const dir=L.dir,perp=L.perp;let spot=null,best=1e9;
+  for(const type of ['restaurant','cafe']){for(let r=14;r<=34&&!spot;r+=4)for(const [a,b] of [[1,0],[1,.7],[1,-.7],[0,1],[0,-1],[.5,1],[.5,-1]]){const x=L.b.x+dir.x*a*r+perp.x*b*r,z=L.b.z+dir.z*a*r+perp.z*b*r;const c2=bCheck(type,x,z,0);if(c2.ok){spot={type,x,z};break}
+      if(!spot&&inBounds({x,z})&&!lifts.some(o=>{const t=clamp(((x-o.a.x)*(o.b.x-o.a.x)+(z-o.a.z)*(o.b.z-o.a.z))/((o.b.x-o.a.x)**2+(o.b.z-o.a.z)**2),0,1);return Math.hypot(x-o.a.x-(o.b.x-o.a.x)*t,z-o.a.z-(o.b.z-o.a.z)*t)<10})&&!buildings.some(b=>Math.hypot(b.x-x,b.z-z)<b.rad+10)){const sl=Math.abs(heightAt(x+4,z)-heightAt(x-4,z))+Math.abs(heightAt(x,z+4)-heightAt(x,z-4));if(sl<best){best=sl;spot={type,x,z,forced:1}}}}
+    if(spot&&!spot.forced)break}
+  if(!spot)return toast('Наверху нет места для площадки — купи соседний участок или подвинь подъёмник',1);
+  money-=c;day.build+=c;day.builtN++;addXP(25);const rot=Math.round(((Math.atan2(-dir.x,-dir.z)/(Math.PI/2))%4+4)%4);
+  clearTreesRect(spot.x,spot.z,14,14,0);const B=makeBuilding(spot.type,spot.x,spot.z,0,false);B.summit=1;if(B.road){scene.remove(B.road);B.road=null;B.roadEnd=null}addSummitDeck(B);skiInPass();
+  burst(new THREE.Vector3(B.x,B.y+10,B.z),'🏔 -'+fmt(c));toast('🏔 На вершине открылся ресторан с площадкой — гости заходят прямо с подъёмника');showSpot({x:B.x,z:B.z});persist();checkQuest()}
 function startMove(B){hideInfo();moveB=B;buildings.splice(buildings.indexOf(B),1);B.g.visible=false;if(B.road)B.road.visible=false;bType=B.type;bRot=B.rot;setTool('build');bType=B.type;pickerOpen=false;ghostAt=null;toast('↔ Нажми, куда поставить '+BT[B.type].n.toLowerCase()+'. Уровень и доход сохранятся');refresh()}
 function cancelMove(){if(!moveB)return;const B=moveB;moveB=null;buildings.push(B);B.g.visible=true;if(B.road)B.road.visible=true}
 function placeBuilding(){if(moveB){if(!ghostAt)return;const O=moveB,c=bCheck(O.type,ghostAt.x,ghostAt.z,bRot);if(!c.ok)return toast(c.msg,1);const fee=Math.round(BT[O.type].cost*.1/100)*100;if(money<fee)return toast('Не хватает денег: перенос стоит '+fmt(fee),1);
@@ -1965,7 +1996,7 @@ function updGrows(dt){for(let i=grows.length-1;i>=0;i--){const g=grows[i];g.t+=d
 const ROAD_TYPES={chalet:1,hotel:1,restaurant:1,rental:1,parking:1,workshop:1};
 function nearRun(B,d){return runs.some(R=>R.sm.some((q,i)=>i%3===0&&Math.hypot(q.x-B.x,q.z-B.z)<d+(R.w||3.9)+B.rad))}
 function skiInPass(){buildings.forEach(B=>{if(!BT[B.type].food)return;const si=nearRun(B,10);if(si&&B.road){scene.remove(B.road);B.road=null;B.roadEnd=null}B.skiIn=si})}
-function accessRoad(B){if(!ROAD.length||!ROAD_TYPES[B.type]||B.road)return;if(BT[B.type].food&&nearRun(B,10)){B.skiIn=true;return}
+function accessRoad(B){if(!ROAD.length||!ROAD_TYPES[B.type]||B.road||B.summit)return;if(BT[B.type].food&&nearRun(B,10)){B.skiIn=true;return}
   let best=null,bd=1e9;ROAD.forEach(p=>{const d=Math.hypot(p.x-B.x,p.z-B.z);if(d<bd){bd=d;best=p}});
   const lot={x:BASE.x,z:BASE.z+13},dl=Math.hypot(lot.x-B.x,lot.z-B.z);if(dl<bd){bd=dl;best=lot}
   buildings.forEach(o=>{if(o===B||!o.road)return;const e=o.roadEnd,d=Math.hypot(e.x-B.x,e.z-B.z);if(d<bd){bd=d;best=e}});
