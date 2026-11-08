@@ -635,7 +635,7 @@ function makeLift(a,b,type,name,col){
   for(let k=1;k<n;k++){const t=k/n,x=a.x+(b.x-a.x)*t,z=a.z+(b.z-a.z)*t,gy=heightAt(x,z),cy=L.ca.y+(L.cb.y-L.ca.y)*t-Math.sin(Math.PI*t)*1.2,h=type==='tbar'?T.cable:cy-gy+.6;
     const ty=type==='tbar'?gy+T.cable:cy;
     const tw=new THREE.Mesh(new THREE.CylinderGeometry(type==='gondola'?.5:.32,type==='gondola'?.7:.45,h,8),mat(0x94a3b8));tw.position.set(x,gy+h/2-.3,z);
-    const cr=box(type==='gondola'?4.4:3,.3,.3,mat(L.col),x,ty+.3,z);cr.rotation.y=ang+Math.PI/2;L.g.add(tw,cr);
+    const cr=box(type==='gondola'?4.4:3,.3,.3,mat(L.col),x,ty+.3,z);cr.rotation.y=ang+Math.PI/2;L.g.add(tw,cr);tw.userData.tw=cr;(L.towers=L.towers||[]).push(tw);
     if(type!=='tbar')for(const sd of [-1,1]){const sv=box(.9,.25,.25,0x334155,x-L.perp.x*(type==='gondola'?1.8:1.3)*sd,ty+.05,z-L.perp.z*(type==='gondola'?1.8:1.3)*sd);sv.rotation.y=ang;L.g.add(sv)}}
   // cables (sagging)
   [1,-1].forEach(s=>{const pts=[];for(let k=0;k<=24;k++){const t=k/24;const v=new THREE.Vector3();if(type==='tbar'){v.set(a.x+(b.x-a.x)*t,0,a.z+(b.z-a.z)*t);v.y=a.y+T.cable+(b.y-a.y)*t;v.addScaledVector(perp,1.3*s)}else cablePos(L,t,s,v);pts.push(v)}
@@ -1916,7 +1916,7 @@ function startRide(R,opt){opt=opt||{};$('mRide').classList.remove('show');if(!R&
    const mn=Math.min(...ys),mx=Math.max(...ys);ride.prof.mn=mn;ride.prof.mx=mx}
   thumb.on=false;thumb.v=0;$('rKnob').style.transform='';$('rThumb').querySelector('span').style.opacity=1;
   camera.position.set(ride.p.x-Math.sin(f0)*10,ride.p.y+5,ride.p.z-Math.cos(f0)*10);camLook.copy(ride.p)}
-function endRide(silent){if(!ride)return;const r=ride;ride=null;blob.visible=false;avG.visible=false;wideOff();finePatch.visible=false;camera.near=.5;camera.updateProjectionMatrix();piles.count=0;pileI=0;if(r.gates)scene.remove(r.gates.g);rider.visible=false;ghost.visible=false;controls.enabled=true;document.body.classList.remove('riding');$('ride').hidden=true;
+function endRide(silent){if(!ride)return;const r=ride;ride=null;lifts.forEach(L=>(L.towers||[]).forEach(t=>{t.visible=true;t.userData.tw.visible=true}));blob.visible=false;avG.visible=false;wideOff();finePatch.visible=false;camera.near=.5;camera.updateProjectionMatrix();piles.count=0;pileI=0;if(r.gates)scene.remove(r.gates.g);rider.visible=false;ghost.visible=false;controls.enabled=true;document.body.classList.remove('riding');$('ride').hidden=true;
   for(const k in keys)keys[k]=false;document.querySelectorAll('.rb').forEach(b=>b.classList.remove('on'));audioUpd(0,0);slMat.opacity=0;trG.setDrawRange(0,0);
   const U=rider.userData;U.torso.visible=true;U.legs.forEach(l=>l.visible=true);
   if(silent)return;const e=r.R?r.R.sm[r.R.sm.length-1]:BASE;controls.target.set(e.x,e.y,e.z);camera.position.set(e.x-50,e.y+55,e.z+80);camera.fov=innerWidth<innerHeight?68:50;camera.updateProjectionMatrix()}
@@ -1929,7 +1929,7 @@ function finishRide(){const r=ride;r.done=true;const total=r.t+r.pen,key=r.key,p
   if(rec){best[key]=+total.toFixed(2);if(r.rec.length>3){ghosts[key]=r.rec;try{localStorage.setItem(SAVE_KEY+'-ghost',JSON.stringify(ghosts))}catch(e){}}}
   const R=r.R,len=R?R.len:Math.hypot(r.p.x-r.lift.b.x,r.p.z-r.lift.b.z)+60,diff=R?R.diff:2;
   const gl=r.gates?r.gates.list:[],gok=gl.filter(g=>g.ok).length;
-  const bonus=Math.max(150,Math.round((300+len*4)*(diff+1)*.6-total*8-r.crashes*150+gok*60+r.airTot*80+r.score*.5));money+=bonus;rideDone++;addXP(10+diff*5+gok);persist();checkQuest();
+  const bonus=Math.max(150,Math.round((300+len*4)*(diff+1)*.6-total*8-r.crashes*150+gok*60+r.airTot*80+Math.min(8000,r.score*.25)));money+=bonus;rideDone++;addXP(10+diff*5+gok);persist();checkQuest();
   tone(660,.15,.2);setTimeout(()=>tone(990,.3,.2),150);audioUpd(0,0);
   $('rideCard').innerHTML=`<div class="rres"><h2>🏁 Финиш! ${R?DIFF[R.diff].s+' '+R.name:'🏔️ Фрирайд'}</h2><div class="big">${total.toFixed(2)} с</div>
    <p style="text-align:center;margin:0 0 10px">${rec?(prev?`🏆 Новый рекорд! Было ${prev.toFixed(2)} с · призрак сохранён`:'🏆 Первый рекорд! Теперь с тобой будет ехать призрак'):`Рекорд: ${prev.toFixed(2)} с · не хватило ${(total-prev).toFixed(2)} с`}</p>
@@ -1941,7 +1941,7 @@ function finishRide(){const r=ride;r.done=true;const total=r.t+r.pen,key=r.key,p
   $('rAgain').onclick=again;if($('rNext'))$('rNext').onclick=()=>{const N=r._next;$('mRide').classList.remove('show');endRide(true);rideIntro(N.run)};$('rOther').onclick=()=>{$('mRide').classList.remove('show');endRide();setTool('ride')};$('rOut').onclick=()=>{$('mRide').classList.remove('show');endRide()}}
 const _cam=new THREE.Vector3(),_look=new THREE.Vector3(),_hp=new THREE.Vector3();let camLook=new THREE.Vector3();
 function safeSpot(x,z){return !hitTree(x,z)&&!hitHouse(x,z)&&inBounds({x,z})}
-function unstick(r,msg){const p=r.p;let q,q2;
+function unstick(r,msg){const p=r.p;let q,q2;r.unstuck=(r.unstuck||0)+1;
   if(r.R){const sm=r.R.sm;let i=Math.min(sm.length-2,r.idx+3);while(i<sm.length-2&&!safeSpot(sm[i].x,sm[i].z))i++;q=sm[i];q2=sm[Math.min(sm.length-1,i+5)];r.idx=Math.max(r.idx,i)}
   else{const dx=BASE.x-p.x,dz=BASE.z-p.z,l=Math.hypot(dx,dz)||1;let k=3;q={x:p.x+dx/l*k,z:p.z+dz/l*k};while(k<30&&!safeSpot(q.x,q.z)){k+=2;q={x:p.x+dx/l*k,z:p.z+dz/l*k}}q2={x:q.x+dx/l*5,z:q.z+dz/l*5}}
   p.set(q.x,heightAt(q.x,q.z),q.z);r.f=Math.atan2(q2.x-q.x,q2.z-q.z);r.vx=Math.sin(r.f)*6;r.vz=Math.cos(r.f)*6;r.air=false;r.vy=0;r.prevVy=0;r.lastG=p.y;r.stuckT=0;r.slowT=0;r.blockT=0;r.spin=0;
@@ -1952,8 +1952,8 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
   const dt=dt0*(r.slow>0?.35:1);r.slow-=dt0;
   const L=keys.l,Rt=keys.r,tuck=keys.tuck,brake=keys.brake,inp=thumb.on?thumb.v:(Rt?1:0)-(L?1:0),p=r.p;
   r.st+=(inp-r.st)*Math.min(1,dt*9);let sp=Math.hypot(r.vx,r.vz),skid=0;
-  if(r.cd<=0&&r.crashT<=0){r.t+=dt;
-    if(r.air&&r.trick){r.spin+=inp*(r.board?8:7)*dt;if(brake||(thumb.on&&thumb.vy>.45))r.flip+=8.6*dt;
+  if(!r.air)r.brk0=brake;if(r.cd<=0&&r.crashT<=0){r.t+=dt;
+    if(r.air&&r.trick){r.spin+=inp*(r.board?8:7)*dt;if(!brake)r.brk0=false;if((brake&&!r.brk0)||(thumb.on&&thumb.vy>.45))r.flip+=(r.flipRate||8.6)*dt;else if(!r.autoFlip){const fr=r.flip%(2*Math.PI);if(fr>2*Math.PI*.55)r.autoFlip=2*Math.PI-fr}
       if(r.autoSpin>0){const a=Math.min(r.autoSpin,9*dt);r.spin+=a;r.autoSpin-=a}if(r.autoFlip>0){const a=Math.min(r.autoFlip,9.5*dt);r.flip+=a;r.autoFlip-=a}if(r.autoGrab)r.grabT=(r.grabT||0)+dt}else r.f-=r.st*((r.board?3.1:2.7)/(1+sp*.03))*dt*(r.air?.55:1);
     const fx=Math.sin(r.f),fz=Math.cos(r.f),lx=fz,lz=-fx;
     if(!r.air){const e=.8,gx=(heightAt(p.x+e,p.z)-heightAt(p.x-e,p.z))/(2*e),gz=(heightAt(p.x,p.z+e)-heightAt(p.x,p.z-e))/(2*e);
@@ -1974,23 +1974,23 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
     else{p.x=nx;p.z=nz;r.blockT=Math.max(0,(r.blockT||0)-dt)}
     const g=heightAt(p.x,p.z);
     if(!r.air){const vyG=(g-r.lastG)/dt/RSC;const jump=keys.jump&&!r.jumpLatch;if(jump)r.jumpLatch=true;if(!keys.jump)r.jumpLatch=false;
-      if(jump||(sp>12&&(vyG-r.prevVy)/dt<-95)){r.air=true;r.airT=0;r.trick=!!jump;r.vy=r.prevVy+(jump?8.5:0);p.y=g+.02;if(jump)tone(300,.08,.08)}
+      if(jump||(sp>12&&(vyG-r.prevVy)/dt<-95)){r.air=true;r.airT=0;r.trick=!!jump;r.vy=r.prevVy+(jump?8.5:0);r.flipRate=Math.max(8.6,2*Math.PI/Math.max(.35,(2*Math.max(1,r.vy)/30/RSC)*.7));p.y=g+.02;if(jump)tone(300,.08,.08)}
       else{p.y=g;r.prevVy=clamp(vyG,-40,40)}}
     if(r.air){r.airT+=dt;if(tuck)r.grabT=(r.grabT||0)+dt;r.vy-=30*dt;p.y+=r.vy*dt*RSC;if(p.y<=g){p.y=g;r.air=false;r.prevVy=0;if(r.airT>.25)r.airTot+=r.airT;
       const vd=Math.atan2(r.vx,r.vz);let da=Math.abs(((vd-r.f)%(2*Math.PI)+3*Math.PI)%(2*Math.PI)-Math.PI);
       r.autoSpin=0;r.autoFlip=0;r.autoGrab=false;const half=r.board?Math.PI:2*Math.PI,turns=Math.round(r.spin/half),rem=Math.abs(r.spin-turns*half),dir=Math.sign(r.spin);r.spin=0;
       const fl=Math.round(r.flip/(2*Math.PI)),frem=Math.abs(r.flip-fl*2*Math.PI);r.lastFlip=r.flip;r.flip=0;
       const spun=Math.abs(turns*half)+rem>1.5,flipped=fl>0||Math.abs(r.lastFlip||0)>1.6;
-      if(((spun&&rem>1.25)||(flipped&&frem>1.2))&&r.airT>.3){crash(r,flipped&&frem>1?'💥 Не докрутил сальто!':'💥 Не докрутил!');r.combo=0}
+      const tried=Math.abs(turns*half)+rem>2.6&&r.airT>.7;if(((spun&&rem>1.75&&tried)||(flipped&&frem>(fl>=1?2.2:1.2)))&&r.airT>.3){crash(r,flipped&&frem>1?'💥 Не докрутил сальто!':'💥 Не докрутил!');r.combo=0}
       else if(turns!==0||fl>0||(r.grabT>.25)){const deg=Math.abs(turns)*(r.board?180:360),parts=[];
         if(fl)parts.push(fl>1?'Дабл бэкфлип':'Бэкфлип');if(deg)parts.push((dir>0?'Фронтсайд ':'Бэксайд ')+deg);if(r.grabT>.25)parts.push(r.grabT>.7?'Тугой грэб':'Грэб');
-        const mult=1+r.combo*.5,pts=Math.round((deg*1.5+fl*650+r.grabT*320+r.airT*120)*mult);r.score+=pts;r.combo++;r.comboT=8;
+        const mult=1+Math.min(6,r.combo)*.5,pts=Math.round((deg*1.5+fl*650+r.grabT*320+r.airT*120)*mult);r.score+=pts;r.combo++;r.comboT=8;
         r.boost=Math.min(1,r.boost+.25);showTrick(parts.join(' · '),pts,mult,(rem>.6||frem>.7)?'НА ГРАНИ':(rem<.2&&frem<.25)?'ИДЕАЛЬНО':'ЧИСТО');tone(784,.12,.15);setTimeout(()=>tone(1046,.18,.15),110);window.haptic&&window.haptic('medium');for(let k=0;k<30;k++)emitSpray(p,(Math.random()-.5)*8,2+Math.random()*4,(Math.random()-.5)*8)}
-      r.grabT=0;
+      r.grabT=0;if(spun&&!tried&&r.crashT<=0){r.f=vd;da=0}
       if(r.crashT>0){}else if(r.airT>.35&&sp>6&&da>1.1)crash(r,'💥 Неудачное приземление!');else if(r.airT>.55&&!turns){rideMsg(`✈ ${r.airT.toFixed(1)} с в воздухе!`,900);for(let k=0;k<14;k++)emitSpray(p,(Math.random()-.5)*6,2+Math.random()*3,(Math.random()-.5)*6)}}}
     r.lastG=g;
     if(r.comboT>0){r.comboT-=dt;if(r.comboT<=0)r.combo=0}
-    if(r.gates&&!r.air)for(const K of r.gates.kick){if(K.used)continue;const dx=p.x-K.x,dz=p.z-K.z,al=dx*K.tx+dz*K.tz,lat=dx*K.lx+dz*K.lz;if(Math.abs(lat)<2.4*KS&&al>-.5*KS&&al<2.6*KS&&sp>4){K.used=true;r.air=true;r.airT=0;r.trick=true;r.autoSpin=0;r.autoFlip=0;r.autoGrab=false;r.vy=9+sp*.34;p.y+=.12;tone(420,.1,.1);for(let k=0;k<18;k++)emitSpray(p,(Math.random()-.5)*5,2+Math.random()*3,(Math.random()-.5)*5);break}}
+    if(r.gates&&!r.air)for(const K of r.gates.kick){if(K.used)continue;const dx=p.x-K.x,dz=p.z-K.z,al=dx*K.tx+dz*K.tz,lat=dx*K.lx+dz*K.lz;if(Math.abs(lat)<2.4*KS&&al>-.5*KS&&al<2.6*KS&&sp>4){K.used=true;r.air=true;r.airT=0;r.trick=true;r.autoSpin=0;r.autoFlip=0;r.autoGrab=false;r.vy=9+sp*.34;r.flipRate=Math.max(8.6,2*Math.PI/Math.max(.35,(2*r.vy/30/RSC)*.7));p.y+=.12;tone(420,.1,.1);for(let k=0;k<18;k++)emitSpray(p,(Math.random()-.5)*5,2+Math.random()*3,(Math.random()-.5)*5);break}}
     // progress along the run, gates, finish
     if(r.R){const sm=r.R.sm;let bi=r.idx,bd=1e9;for(let i=Math.max(0,r.idx-6);i<Math.min(sm.length,r.idx+30);i++){const d=(sm[i].x-p.x)**2+(sm[i].z-p.z)**2;if(d<bd){bd=d;bi=i}}if(bi>r.idx)r.idx=bi;
       let passed=0;for(const G of r.gates.list){if(G.ok===null&&r.idx>=G.i){const d=(p.x-G.x)*G.lx+(p.z-G.z)*G.lz;if(Math.abs(d)<=G.w+.6){G.ok=true;G.fm.color.setHex(0x22c55e);tone(990,.09,.1)}else{G.ok=false;r.pen+=2;G.fm.color.setHex(0x64748b);rideMsg('🚩 Ворота пропущены: +2 с',1000);tone(200,.2,.12)}}if(G.ok)passed++}
@@ -2035,6 +2035,8 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
   if(sp>24&&!fp){camera.position.x+=(Math.random()-.5)*(sp-24)*.012*RSC;camera.position.y+=(Math.random()-.5)*(sp-24)*.012*RSC}
   {const gy=meshH(camera.position.x,camera.position.z)+(fp?.9:1.4);if(camera.position.y<gy)camera.position.y=gy;if(!fp){const minY=rider.position.y+.9;if(camera.position.y<minY)camera.position.y=minY}}
   camera.lookAt(camLook);if(fp)camera.rotateZ(-r.lean*.35);
+  {const cx=camera.position.x,cz=camera.position.z,ex=rider.position.x-cx,ez=rider.position.z-cz,el=ex*ex+ez*ez||1;// hide lift towers standing between camera and rider
+   for(const L of lifts)if(L.towers)for(const t of L.towers){const tx=t.position.x-cx,tz=t.position.z-cz,u=clamp((tx*ex+tz*ez)/el,0,1.05),dx=tx-ex*u,dz=tz-ez*u,v=fp||dx*dx+dz*dz>2.6;if(t.visible!==v){t.visible=v;t.userData.tw.visible=v}}}
   const fv=(innerWidth<innerHeight?66:52)+sp*.8;if(Math.abs(camera.fov-fv)>.3){camera.fov+=(fv-camera.fov)*.1;camera.updateProjectionMatrix()}
   updStreaks(dt0,sp);audioUpd(sp,skid);
   if(r.prof){let fr;if(r.R)fr=r.idx/(r.R.sm.length-1);else{const a=r.lift.b,tot=Math.hypot(a.x-BASE.x,a.z-BASE.z)||1;fr=clamp(1-Math.hypot(p.x-BASE.x,p.z-BASE.z)/tot,0,1)}
