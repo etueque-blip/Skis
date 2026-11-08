@@ -651,8 +651,17 @@ function makeLift(a,b,type,name,col){
   L.nch=Math.max(2,nc*2);L.cparts=defs.map(([g,m])=>{const im=new THREE.InstancedMesh(g,m,L.nch);im.frustumCulled=false;im.castShadow=true;L.g.add(im);return im});
   L.g.traverse(o=>{if(o.isMesh&&!o.isInstancedMesh)o.castShadow=true});
   L.lbl=label(T.icon+' '+L.name);L.lbl.position.set(b.x,b.y+L.cab+5,b.z);L.g.add(L.lbl);
-  scene.add(L.g);clearTrees(sampleLine(a,b),type==='gondola'?4:3.2);lifts.push(L);return L;
+  liftPath(L);scene.add(L.g);clearTrees(sampleLine(a,b),type==='gondola'?4:3.2);lifts.push(L);return L;
 }
+function liftPath(L){const W=L.type==='gondola'?6:4,en={x:L.a.x-L.dir.x*(W/2+3),z:L.a.z-L.dir.z*(W/2+3)};
+  let best={x:BASE.x,z:BASE.z-6},bd=Math.hypot(best.x-en.x,best.z-en.z);
+  lifts.forEach(o=>{if(o===L)return;const d=Math.hypot(o.a.x-en.x,o.a.z-en.z);if(d>8&&d<bd){bd=d;best={x:o.a.x-o.dir.x*5,z:o.a.z-o.dir.z*5}}});
+  buildings.forEach(o=>{if(!o.roadEnd)return;const d=Math.hypot(o.roadEnd.x-en.x,o.roadEnd.z-en.z);if(d<bd){bd=d;best=o.roadEnd}});
+  if(bd<4||bd>220)return;const dx=en.x-best.x,dz=en.z-best.z,l=Math.hypot(dx,dz),ux=dx/l,uz=dz/l,n=Math.max(2,Math.ceil(l/2)),bend=Math.min(6,l*.08)*(L.id%2?1:-1),pts=[];
+  for(let k=0;k<=n;k++){const t=k/n,x=best.x+dx*t-uz*Math.sin(t*Math.PI)*bend,z=best.z+dz*t+ux*Math.sin(t*Math.PI)*bend;pts.push({x,z,y:heightAt(x,z)})}
+  const g=new THREE.Group();g.add(ribbon(pts,.95,0xb8c2d3,1));g.position.y=.03;
+  for(let k=4;k<pts.length-1;k+=5){const p=pts[k],q=pts[k+1]||p,tx=q.x-p.x,tz=q.z-p.z,tl=Math.hypot(tx,tz)||1,sd=k%10<5?1:-1,x=p.x-tz/tl*1.5*sd,z=p.z+tx/tl*1.5*sd;g.add(box(.12,1.3,.12,0xf97316,x,meshH(x,z)+.65,z))}
+  L.g.add(g);L.path=g;clearTrees(pts,2.2);clearRocks(pts,2)}
 function sampleLine(a,b){const n=Math.ceil(d2(a,b)),o=[];for(let k=0;k<=n;k++){const t=k/n;o.push({x:a.x+(b.x-a.x)*t,z:a.z+(b.z-a.z)*t})}return o}
 
 /* ================= runs ================= */
@@ -751,7 +760,7 @@ const BT={
   restaurant:{n:'Ресторан',icon:'🍽️',cost:12000,w:12,d:9,upkeep:150,desc:'Голодные гости заходят поесть: +$14 и хорошее настроение. Работает в радиусе 320 м.',food:14,radius:40},
   cafe:{n:'Горное кафе',icon:'☕',cost:5000,w:6,d:6,upkeep:60,desc:'Маленькое кафе, можно ставить высоко на горе: +$8 и настроение. Радиус 220 м.',food:8,radius:28},
   rental:{n:'Прокат',icon:'🎿',cost:8000,w:9,d:7,upkeep:80,desc:'Новички берут лыжи: +$10 с каждого новичка, им веселее.',rent:10},
-  parking:{n:'Парковка',icon:'🅿️',cost:4000,w:16,d:10,upkeep:20,desc:'+40 машин: больше гостей может приехать за день.',cap:40},
+  parking:{n:'Парковка',icon:'🅿️',cost:4000,w:16,d:10,upkeep:20,desc:'+40 машин: больше гостей приезжает, и каждый платит за парковку.',cap:40,fee:6},
   cannon:{n:'Снежные пушки',icon:'❄️',cost:9000,w:5,d:5,upkeep:120,desc:'Делают снег в радиусе 400 м: в оттепель трассы рядом не раскисают.',radius:50},
   workshop:{n:'Мастерская',icon:'🔧',cost:10000,w:9,d:7,upkeep:100,desc:'Механики сами чинят сломанный подъёмник за 30 мин, а поломок вдвое меньше.'},
   patrol:{n:'Спасатели',icon:'⛑️',cost:7000,w:7,d:6,upkeep:90,desc:'Если гость упал, спасатель на лыжах едет к нему и помогает встать: падения почти не портят настроение.',need:1},
@@ -812,9 +821,22 @@ function bModel(type){
     const sg=label('☕','#fde68a',.05);sg.position.set(0,5.2,-3.1);g.add(sg);lantern(g,.4,2.7,-2.65)}
   else if(type==='rental'){g.add(box(9,4,7,0x0ea5e9,0,2,0),box(9.6,.5,7.6,0x0f172a,0,4.2,0));windows(g,3,2.2,-3.52,2.6,Math.PI);
     for(let k=0;k<7;k++)g.add(box(.18,2.4,.1,CARC[k],-3+k,1.2,-4.2))}
-  else if(type==='parking'){const p=new THREE.Mesh(new THREE.PlaneGeometry(16,10),mat(0x8b95a5));p.rotation.x=-Math.PI/2;p.position.y=.2;g.add(p);
-    for(let k=-3;k<=3;k++){const l=new THREE.Mesh(new THREE.PlaneGeometry(.15,3.2),new THREE.MeshBasicMaterial({color:0xf8fafc}));l.rotation.x=-Math.PI/2;l.position.set(k*2.2,.25,-3);g.add(l);const l2=l.clone();l2.position.z=3;g.add(l2)}
-    for(let k=0;k<6;k++)car(g,-5.5+k*2.2,k%2?3:-3)}
+  else if(type==='parking'){const p=new THREE.Mesh(new THREE.PlaneGeometry(16,10),mat(0x5b6472));p.rotation.x=-Math.PI/2;p.position.y=.2;g.add(p);
+    for(const z of [-5.1,5.1])g.add(box(16.4,.25,.3,0xcbd5e1,0,.3,z),box(16.6,.5,.9,0xf8fafc,0,.35,z+(z>0?.7:-.7)));
+    g.add(box(.3,.25,10.4,0xcbd5e1,-8.1,.3,0),box(.9,.5,10.6,0xf8fafc,-8.8,.35,0));
+    const lm=new THREE.MeshBasicMaterial({color:0xf8fafc});
+    for(let k=-3;k<=3;k++)for(const z of [-3,3]){const l=new THREE.Mesh(new THREE.PlaneGeometry(.15,3.2),lm);l.rotation.x=-Math.PI/2;l.position.set(k*2.2-1,.25,z);g.add(l)}
+    const ar=new THREE.Mesh(new THREE.PlaneGeometry(14,.15),lm);ar.rotation.x=-Math.PI/2;ar.position.set(-1,.25,0);g.add(ar);
+    for(let k=0;k<12;k++){if(Math.random()<.2)continue;car(g,-7.6+(k%6)*2.2+1.1,k<6?3:-3)}
+    // pay booth + striped barrier at the entrance (east side)
+    g.add(box(1.6,2.2,1.6,0xe5e7eb,6.8,1.3,-3.8),box(1.9,.2,1.9,0x1d4ed8,6.8,2.5,-3.8),box(2,.15,2,0xf8fafc,6.8,2.65,-3.8));
+    const bw=new THREE.Mesh(new THREE.PlaneGeometry(1.1,.6),winMat);bw.position.set(6.8,1.6,-2.99);g.add(bw);
+    g.add(box(.3,1,.3,0x334155,6.8,.7,-2.4));for(let k=0;k<5;k++)g.add(box(.9,.16,.16,k%2?0xf8fafc:0xdc2626,6.8,1.1,-1.9+k*.9));
+    // P sign and lamps
+    g.add(box(.15,3.2,.15,0x334155,-7.4,1.8,-4.4),box(1.4,1.4,.12,0x1d4ed8,-7.4,3.6,-4.4));const ps=label('P','#ffffff',.06);ps.position.set(-7.4,3.6,-4.3);g.add(ps);
+    for(const [x,z] of [[-3,-4.6],[3.5,4.6]]){g.add(box(.15,4,.15,0x334155,x,2.2,z),box(.9,.2,.4,0x334155,x,4.2,z));const lp=new THREE.Mesh(new THREE.BoxGeometry(.6,.08,.3),winMat);lp.position.set(x,4.08,z);g.add(lp)}
+    // small decorative firs around the lot
+    for(const [x,z,s] of [[-9.6,-6,1],[-9.6,6,1.1],[9.5,6.2,.9],[-4,6.6,.8],[2,-6.6,.85],[-6,-6.7,.95]]){const t=new THREE.Mesh(new THREE.ConeGeometry(.9*s,2.6*s,7),mat(0x166534));t.position.set(x,1.4*s,z);const c=new THREE.Mesh(new THREE.ConeGeometry(.5*s,1*s,7),mat(0xf8fafc));c.position.set(x,2.45*s,z);const tr=box(.25,.6,.25,0x5b3a24,x,.3,z);g.add(t,c,tr)}}
   else if(type==='cannon'){g.add(box(3,.4,3,0x475569,0,.2,0));const tw=new THREE.Mesh(new THREE.CylinderGeometry(.25,.3,4,6),mat(0x64748b));tw.position.y=2;g.add(tw);const br=new THREE.Mesh(new THREE.CylinderGeometry(.9,.6,2.6,10),mat(0xfacc15));br.rotation.x=1.1;br.position.set(0,4.4,-.6);g.add(br)}
   else if(type==='workshop'){g.add(box(9,4.4,7,0x6b7280,0,2.2,0));const r=new THREE.Mesh(roofGeo(10,7.6,2.4),mat(0x334155));r.rotation.y=Math.PI/2;r.scale.set(.75,1,1.32);r.position.y=4.4;g.add(r);g.add(box(4,3.2,.15,0x1f2937,0,1.6,-3.55));for(let k=0;k<4;k++)g.add(box(4,.12,.18,0x9ca3af,0,.6+k*.75,-3.62));g.add(box(1.6,1.2,2.6,0xf59e0b,3.4,.7,-5))}
   else if(type==='patrol'){g.add(box(7,3.6,6,0xdc2626,0,1.8,0),box(7.4,.4,6.4,0xf8fafc,0,3.8,0),box(2.4,.6,.1,0xf8fafc,0,2.5,-3.05),box(.6,2.4,.1,0xf8fafc,0,2.5,-3.06))}
@@ -896,7 +918,7 @@ function makeBuilding(type,x,z,rot,free){
   const m=bModel(type);m.rotation.y=rot*Math.PI/2;m.traverse(o=>{if(o.isMesh){o.castShadow=true;o.receiveShadow=true}});B.g.add(m);
   if(c.found>.4){const fd=box(f.w+.6,c.found+1.2,f.d+.6,0x8a8f99,0,-(c.found+1.2)/2+.1,0);B.g.add(fd)}
   const lb=label(T.icon+' '+T.n,null,.13);B.lbl=lb;lb.position.y=type==='hotel'?17:type==='parking'?4:9;B.g.add(lb);
-  B.g.position.set(x,y,z);scene.add(B.g);clearRocks([{x,z}],Math.max(f.w,f.d)/2+1);if(!free){B.g.scale.set(1,.01,1);grows.push({o:B.g,t:0})}clearTreesRect(x,z,f.w/2,f.d/2,0);buildings.push(B);if(window.roadReady)accessRoad(B);return B;
+  B.g.position.set(x,y,z);scene.add(B.g);clearRocks([{x,z}],Math.max(f.w,f.d)/2+1);if(!free){B.g.scale.set(1,.01,1);grows.push({o:B.g,t:0})}clearTreesRect(x,z,f.w/2+(type==='parking'?3:0),f.d/2+(type==='parking'?3:0),0);buildings.push(B);if(window.roadReady)accessRoad(B);return B;
 }
 
 /* ================= land overlay & border ================= */
@@ -980,7 +1002,7 @@ function spawnSkier(){
   const r=Math.random(),skill=r<.4?0:r<.8?1:r<.95?2:3;
   const s={mesh:makeSkierMesh(),skill,state:'walk',pos:new THREE.Vector3(BASE.x+(Math.random()-.5)*22,0,BASE.z+10+Math.random()*6),happy:70,runsDone:0,goal:2+((Math.random()*5)|0),wait:0,phase:Math.random()*6,seen:new Set(),fade:1,ate:false};
   s.pos.y=heightAt(s.pos.x,s.pos.z);s.dest={x:BASE.x+(Math.random()-.5)*10,z:BASE.z-6};s.after=null;
-  if(Math.random()<.34)spawnCar(-1);skiers.push(s);day.visitors++;xp+=1;if(levelOf(xp)>level)addXP(0);day.tickets+=price;money+=price;
+  if(Math.random()<.34)spawnCar(-1);{const pk=buildings.filter(b=>b.type==='parking');if(pk.length&&Math.random()<Math.min(.85,.35+.15*pk.length)){const B=pk[(Math.random()*pk.length)|0],v=Math.round(BT.parking.fee*bMul(B));money+=v;day.parking=(day.parking||0)+v;B.earned+=v;B.visits++}}skiers.push(s);day.visitors++;xp+=1;if(levelOf(xp)>level)addXP(0);day.tickets+=price;money+=price;
   if(price>fairValue()*1.2){s.happy-=10;if(Math.random()<.4)think(s,'price')}
   const rent=buildings.find(b=>b.type==='rental');if(rent&&skill<=1){money+=BT.rental.rent;day.food+=BT.rental.rent;rent.earned+=BT.rental.rent;s.happy+=5}
   return s;
@@ -1228,7 +1250,7 @@ function endDay(){const sleepers=day.sleepers||0,lodgeLive=day.lodge||0;building
   money+=night-bUp;
   buildings.forEach(b=>{const e=b.earned||0;if(b.e0!==undefined)b.dayInc=Math.round(b.dayInc?(e-b.e0)*.6+b.dayInc*.4:e-b.e0);b.e0=e});
   const profit=money-day.startMoney;dayHist.push(Math.round(profit));if(dayHist.length>7)dayHist.shift();
-  const inc=[['🎟 Ски-пассы',day.tickets],['🍽 Еда и прокат',day.food],['🛏 Ночёвки',night+lodgeLive],['🎁 Призы',autoDaily]].filter(x=>x[1]>0),
+  const inc=[['🎟 Ски-пассы',day.tickets],['🍽 Еда и прокат',day.food],['🅿️ Парковка',day.parking||0],['🛏 Ночёвки',night+lodgeLive],['🎁 Призы',autoDaily]].filter(x=>x[1]>0),
     exp=[['🚡 Подъёмники',day.costs],['🔧 Ремонт',day.repairs||0],['🏠 Здания',bUp],['🏗 Стройка',Math.max(0,day.build-day.refund)]].filter(x=>x[1]>0),
     mx=Math.max(1,...inc.map(x=>x[1]),...exp.map(x=>x[1]));
   const bar=(l,v,c)=>`<div class="ibar"><span>${l}</span><em class="bw"><em style="width:${Math.max(2,v/mx*100).toFixed(1)}%;background:${c}"></em></em><b>${fmt(v)}</b></div>`;
