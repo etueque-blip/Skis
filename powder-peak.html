@@ -1091,7 +1091,7 @@ function decide(s){
   if(!o.length){
     if(isNight())return leave(s,1);
     if(atBase){s.happy-=35;day.noLift++;think(s,'nolift');return leave(s,2)}
-    s.happy-=25;day.stranded++;think(s,'stuck');return leave(s,2);
+    s.happy-=25;day.stranded++;think(s,'stuck');{let br=null,bd=1e9;runs.forEach(R=>{const e=R.sm[R.sm.length-1],d=Math.hypot(e.x-s.pos.x,e.z-s.pos.z);if(d<bd){bd=d;br=R}});if(br&&bd<30){day.stuckRun=day.stuckRun||{};day.stuckRun[br.id]=(day.stuckRun[br.id]||0)+1}}return leave(s,2);
   }
   let tot=o.reduce((a,b)=>a+b.w,0),r=Math.random()*tot,c=o[0];for(const x of o){r-=x.w;if(r<=0){c=x;break}}
   s.state='walk';s.after=c;
@@ -1155,7 +1155,7 @@ function updateSkier(s,dt){
     const L=s.lift,k=L.queue.indexOf(s);
     const tx=L.a.x-L.dir.x*(2.5+k*1.3)+L.perp.x*((k%2)-.5)*1.2,tz=L.a.z-L.dir.z*(2.5+k*1.3)+L.perp.z*((k%2)-.5)*1.2;
     s.pos.x+=(tx-s.pos.x)*Math.min(1,dt*3);s.pos.z+=(tz-s.pos.z)*Math.min(1,dt*3);s.pos.y=heightAt(s.pos.x,s.pos.z)+.25;
-    s.wait+=dt;if(s.wait>25&&!s.qThought){s.qThought=1;think(s,'queue')}
+    s.wait+=dt;if(s.wait>25&&!s.qThought){s.qThought=1;think(s,'queue');day.qLift=day.qLift||{};day.qLift[L.id]=(day.qLift[L.id]||0)+1}
     m.position.copy(s.pos);m.rotation.set(0,Math.atan2(L.dir.x,L.dir.z),0);
   }else if(s.state==='lift'){
     const L=s.lift;if(s.chairK!==undefined&&L.nch){const u=(s.chairK/L.nch+L.phase)%1*2;s.t=u<1?u:1}else s.t+=liftSpeed(L)*dt/L.len;
@@ -1171,7 +1171,7 @@ function updateSkier(s,dt){
     const grade=Math.max(0,(a.y-b.y)/(R.step||1));
     const tgt=clamp(3.5+grade*15,3,14)*(.78+.12*s.skill);if(s.v===undefined)s.v=tgt;s.v+=(tgt-s.v)*Math.min(1,dt*1.1);const sp=s.v;s.d+=sp*dt;
     if(R.diff-s.skill>=1&&Math.random()<dt*.012*(R.diff-s.skill)){s.fallT=2;R.falls++;day.falls++;s.happy-=buildings.some(b=>b.type==='patrol')?2:9;think(s,'fall');callPatrol(s);return}
-    if(s.d>=R.len-.5){R.skiers--;R.ridden++;R.dayRuns=(R.dayRuns||0)+1;day.runs++;s.runsDone++;const dd=R.diff-s.skill;s.happy+=dd===0?9:dd<0?3:dd===1?1:-18;if(dd>=2)think(s,'steep');else if(dd===0&&Math.random()<.15)think(s,'happy');if(!s.seen.has(R.id)){s.happy+=3;s.seen.add(R.id)}if(R.groomed)s.happy+=2;{const W=WEATHER[weather];if(weather==='thaw'){if(cannonCovers(R))s.happy+=2;else{s.happy-=10;if(Math.random()<.3)think(s,'slush')}}else{s.happy+=W.happy||0;if(weather==='powder'&&Math.random()<.12)think(s,'powder')}}s.happy=clamp(s.happy,0,100);
+    if(s.d>=R.len-.5){R.skiers--;R.ridden++;R.dayRuns=(R.dayRuns||0)+1;day.runs++;s.runsDone++;const dd=R.diff-s.skill;s.happy+=dd===0?9:dd<0?3:dd===1?1:-18;if(dd>=2){think(s,'steep');day.steepRun=day.steepRun||{};day.steepRun[R.id]=(day.steepRun[R.id]||0)+1}else if(dd===0&&Math.random()<.15)think(s,'happy');if(!s.seen.has(R.id)){s.happy+=3;s.seen.add(R.id)}if(R.groomed)s.happy+=2;{const W=WEATHER[weather];if(weather==='thaw'){if(cannonCovers(R))s.happy+=2;else{s.happy-=10;if(Math.random()<.3)think(s,'slush')}}else{s.happy+=W.happy||0;if(weather==='powder'&&Math.random()<.12)think(s,'powder')}}s.happy=clamp(s.happy,0,100);
       s.pos.set(sm[sm.length-1].x,sm[sm.length-1].y,sm[sm.length-1].z);decide(s);return}
     let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;
     const W=(R.w||3.9),A=Math.min(W*.62,s.turnA||2),K=s.turnK||.32,ph=s.d*K+s.phase,ramp=clamp(s.d/12,0,1)*clamp((R.len-s.d)/10,0,1),
@@ -1239,13 +1239,35 @@ const PROBS={
   fall:{fix:'Построй пункт спасателей — они быстро помогут упавшим.',btn:'⛑️ Спасатели',go:()=>{bType='patrol';setTool('build')}},
   broken:{fix:'Мастерская чинит подъёмники сама, и поломок вдвое меньше.',btn:'🔧 Мастерская',go:()=>{bType='workshop';setTool('build')}},
   slush:{fix:'Снежные пушки спасают трассы в оттепель (Осмотр → трасса → ❄️).',btn:'❄️ Пушки',go:()=>{bType='cannon';setTool('build')}}};
+// where does this run end? true if guests can continue from there
+function runEndOk(R){const p=R.sm[R.sm.length-1];return d2(p,BASE)<BASE_LINK||lifts.some(L=>d2(p,L.a)<LINK)||runs.some(O=>O!==R&&d2(p,O.sm[0])<LINK)||buildings.some(b=>(BT[b.type].guests||BT[b.type].food)&&Math.hypot(p.x-b.x,p.z-b.z)<b.rad+16)}
+let flashM=null,flashT=0;
+function flashAt(p){if(!flashM){flashM=new THREE.Mesh(new THREE.RingGeometry(3,4.2,40),new THREE.MeshBasicMaterial({color:0xef4444,transparent:true,depthTest:false,side:THREE.DoubleSide}));flashM.rotation.x=-Math.PI/2;flashM.renderOrder=20;scene.add(flashM)}
+  flashM.position.set(p.x,meshH(p.x,p.z)+1,p.z);flashM.visible=true;flashT=6;const b=burst(new THREE.Vector3(p.x,meshH(p.x,p.z)+6,p.z),'⚠ здесь')}
+setInterval(()=>{if(!flashM||!flashM.visible)return;flashT-=.05;const k=1+.35*Math.sin(flashT*8);flashM.scale.set(k,k,k);flashM.material.opacity=Math.min(1,flashT/2);if(flashT<=0)flashM.visible=false},50);
+function showSpot(p){hideInfo();if(tool!=='look')setTool('look');const t=new THREE.Vector3(p.x,meshH(p.x,p.z),p.z);camGo(t,t.clone().add(new THREE.Vector3(30,45,55)));flashAt(p)}
+// extend a dead-end run to the nearest lift bottom / base it can reach downhill
+function autoExtend(R){const e=R.pts[R.pts.length-1],tg=[{x:BASE.x+8,z:BASE.z-10},{x:BASE.x-8,z:BASE.z-10}];lifts.forEach(L=>tg.push({x:L.a.x-L.dir.x*3,z:L.a.z-L.dir.z*3}));
+  let best=null;for(const T of tg){const dx=T.x-e.x,dz=T.z-e.z,l=Math.hypot(dx,dz);if(l<5||l>320)continue;for(const off of [0,15,-15,30,-30]){const px=-dz/l,pz=dx/l;
+    const mids=l>60?[{x:e.x+dx*.5+px*off,z:e.z+dz*.5+pz*off}]:[];const pts=R.pts.map(p=>new THREE.Vector3(p.x,heightAt(p.x,p.z),p.z)).concat(mids.concat([T]).map(p=>new THREE.Vector3(p.x,heightAt(p.x,p.z),p.z)));
+    const c=runCheck(curveSamples(pts));if(c.ok&&(!best||l<best.l)){best={pts,l};break}}}
+  if(!best){startEditRun(R);toast('Не нашёл ровный путь вниз — перетащи последнюю точку в жёлтый круг у подъёмника или базы',1);return}
+  startEditRun(R);runPts=best.pts;refresh();toast('🪄 Продлил трассу до подъёмника/базы. Проверь и нажми «Сохранить»')}
+function specificProbs(){const o=[];
+  runs.forEach(R=>{if(!runEndOk(R)){const st=(day.stuckRun||{})[R.id]||0;o.push({w:100+st,i:'⛔',t:`${R.name} ведёт в никуда`+(st?` · застряли ${st}`:''),fix:'Её конец не у подъёмника, не у базы и не у здания — гости там застревают. «🪄 Продлить» дотянет её вниз сама, или «✏️ Изменить» — перетащи последнюю точку в жёлтый круг.',
+    btns:[{l:'📍 Показать',f:()=>showSpot(R.sm[R.sm.length-1])},{l:'🪄 Продлить',p:1,f:()=>autoExtend(R)},{l:'✏️ Изменить',f:()=>startEditRun(R)}]})}});
+  lifts.forEach(L=>{const q=L.queue.length,c=(day.qLift||{})[L.id]||0;if(q>=12||c>=3){const tc=(L.turbo||0)<3?turboCost(L):0;o.push({w:50+q+c,i:'⏳',t:`Очередь у ${L.name} — ${q} чел.`,fix:'Подъёмник не успевает. Включи ⚡ турбо (быстрее и чаще кресла) или поставь второй подъёмник рядом.',
+    btns:[{l:'📍 Показать',f:()=>showSpot(L.a)},...(tc?[{l:`⚡ Турбо ${fmt(tc)}`,p:1,dis:money<tc,f:()=>{turboLift(L);toast('⚡ '+L.name+' ускорен')}}]:[]),{l:'🚡 Ещё подъёмник',f:()=>setTool('lift')}]})}
+    if(L.broken)o.push({w:90,i:'🛠️',t:`${L.name} сломан`,fix:'Почини сейчас или построй мастерскую — она чинит сама.',btns:[{l:'📍 Показать',f:()=>showSpot(L.a)},{l:'🔧 Починить',p:1,f:()=>repairLift(L)}]})});
+  runs.forEach(R=>{const n=(day.steepRun||{})[R.id]||0;if(n>=2)o.push({w:30+n,i:'😱',t:`${R.name}: слишком сложная — ${n} гостей испугались`,fix:'Новичкам нужна пологая трасса рядом: нарисуй зелёную вдоль склона, а не прямо вниз.',btns:[{l:'📍 Показать',f:()=>showSpot(R.sm[(R.sm.length/2)|0])},{l:'⛷️ Новая трасса',p:1,f:()=>setTool('run')}]})});
+  return o.sort((a,b)=>b.w-a.w)}
 function probList(){return Object.entries(day.thoughts||{}).filter(([k,v])=>PROBS[k]&&v>=2&&!(k==='fall'&&has('patrol'))&&!(k==='broken'&&has('workshop'))).sort((a,b)=>b[1]-a[1])}
 let lastProbH='';
-function renderProbs(){const el=$('probs');const L=probList();if(!L.length||ride){el.hidden=true;lastProbH='';return}
-  const [k,v]=L[0],h=`😟 <b>${THOUGHTS[k][1]}</b> — ${v} гостей${L.length>1?` · ещё ${L.length-1}`:''} <span style="color:#fde047">→ как решить</span>`;if(h!==lastProbH){lastProbH=h;el.innerHTML=h}el.hidden=false}
-function openProbs(){const L=probList();const el=document.createElement('div');el.className='modal show';el.style.zIndex=30;
-  el.innerHTML=`<div class="pn mcard"><h2>😟 Проблемы гостей</h2><p>Что мешает гостям сегодня и как это исправить.</p>${L.map(([k,v])=>`<div class="prob"><span class="pi">${THOUGHTS[k][0]}</span><div><b>${THOUGHTS[k][1]}</b> · ${v}<small>${PROBS[k].fix}</small></div><button class="btn pri" data-k="${k}">${PROBS[k].btn}</button></div>`).join('')||'<p>🎉 Сейчас всё хорошо!</p>'}<div class="row"><button class="btn" id="pClose">Закрыть</button></div></div>`;
-  document.body.appendChild(el);el.querySelector('#pClose').onclick=()=>el.remove();el.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{el.remove();PROBS[b.dataset.k].go()})}
+function renderProbs(){const el=$('probs');const S=specificProbs(),L=probList();if((!L.length&&!S.length)||ride){el.hidden=true;lastProbH='';return}
+  const n=S.length+L.length,h=S.length?`${S[0].i} <b>${S[0].t}</b>${n>1?` · ещё ${n-1}`:''} <span style="color:#fde047">→ как решить</span>`:`😟 <b>${THOUGHTS[L[0][0]][1]}</b> — ${L[0][1]} гостей${L.length>1?` · ещё ${L.length-1}`:''} <span style="color:#fde047">→ как решить</span>`;if(h!==lastProbH){lastProbH=h;el.innerHTML=h}el.hidden=false}
+function openProbs(){const S=specificProbs(),covered=new Set([S.some(x=>x.i==='⛔')?'stuck':'',S.some(x=>x.i==='⏳')?'queue':'',S.some(x=>x.i==='😱')?'steep':'']),L=probList().filter(([k])=>!covered.has(k));const el=document.createElement('div');el.className='modal show';el.style.zIndex=30;
+  el.innerHTML=`<div class="pn mcard"><h2>😟 Проблемы гостей</h2><p>Что мешает гостям сегодня и как это исправить.</p>${S.map((x,i)=>`<div class="prob"><span class="pi">${x.i}</span><div><b>${x.t}</b><small>${x.fix}</small><div class="row" style="margin-top:6px;flex-wrap:wrap;gap:6px">${x.btns.map((b,j)=>`<button class="btn${b.p?' pri':''}" data-s="${i}:${j}" ${b.dis?'disabled':''}>${b.l}</button>`).join('')}</div></div><span></span></div>`).join('')}${L.map(([k,v])=>`<div class="prob"><span class="pi">${THOUGHTS[k][0]}</span><div><b>${THOUGHTS[k][1]}</b> · ${v}<small>${PROBS[k].fix}</small></div><button class="btn pri" data-k="${k}">${PROBS[k].btn}</button></div>`).join('')||(S.length?'':'<p>🎉 Сейчас всё хорошо!</p>')}<div class="row"><button class="btn" id="pClose">Закрыть</button></div></div>`;
+  document.body.appendChild(el);el.querySelector('#pClose').onclick=()=>el.remove();el.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{el.remove();PROBS[b.dataset.k].go()});el.querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{const [i,j]=b.dataset.s.split(':').map(Number);el.remove();paused=false;S[i].btns[j].f()})}
 $('probs').onclick=openProbs;
 function renderAlert(){const br=lifts.filter(L=>L.broken),el=$('alert');if(!br.length){el.hidden=true;return}const L=br[0];el.hidden=false;
   el.innerHTML=`<span style="flex:1;min-width:0">⚠ <b>${L.name}</b> сломан${br.length>1?` <span style="color:var(--mut)">(и ещё ${br.length-1})</span>`:''}</span><button class="btn pri" id="aFix">🔧 Починить ${fmt(repairCost(L))}</button>`;
@@ -1493,7 +1515,8 @@ function endHint(p){
   if(lifts.some(L=>d2(p,L.a)<LINK))return '<span class="okc">✓ конец у подъёмника</span>';
   if(runs.some(R=>d2(p,R.sm[0])<LINK))return '<span class="okc">✓ переходит в другую трассу</span>';
   {const b=buildings.find(b=>(BT[b.type].guests||BT[b.type].food)&&Math.hypot(p.x-b.x,p.z-b.z)<b.rad+16);if(b)return `<span class="okc">✓ прямо к зданию «${BT[b.type].n}» — гости доедут на лыжах</span>`+(lifts.some(L=>d2(p,L.a)<LINK)||d2(p,BASE)<BASE_LINK?'':' <span class="wrn">(но обратно наверх подъёмника нет)</span>')}
-  return '<span class="wrn">⚠ конец никуда не ведёт — гости застрянут</span>';
+  {let bd=1e9,nm='';lifts.forEach(L=>{const d=d2(p,L.a);if(d<bd){bd=d;nm='к нижней станции: '+L.name}});const db=d2(p,BASE);if(db<bd){bd=db;nm='к базе'}
+   return `<span class="wrn">⚠ конец никуда не ведёт — гости застрянут. Дотяни ${nm} (ещё ${M(Math.max(0,bd-LINK))} м) до жёлтого круга</span>`}
 }
 function refresh(){
   renderPicker();drawPreview();
