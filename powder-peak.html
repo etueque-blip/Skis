@@ -1407,7 +1407,7 @@ if(save){
 if(!daily)daily=genDaily();
 const GIFT=0;
 let giftGiven=!!(save&&save.gift1m)||!!META.gift;
-if(GIFT&&!giftGiven){money+=GIFT;giftGiven=true;META.gift=true;saveMeta();persist();setTimeout(()=>{toast('🎁 Подарок от разработчика: +'+fmt(GIFT)+' на счёт!');try{$('cash').animate([{transform:'scale(1.5)',color:'#fde047'},{transform:'scale(1)'}],{duration:1200})}catch(e){}},1200)}
+if(GIFT&&!giftGiven&&save){money+=GIFT;giftGiven=true;META.gift=true;saveMeta();persist();setTimeout(()=>{toast('🎁 Подарок от разработчика: +'+fmt(GIFT)+' на счёт!');try{$('cash').animate([{transform:'scale(1.5)',color:'#fde047'},{transform:'scale(1)'}],{duration:1200})}catch(e){}},1200)}
 
 /* ================= picking ================= */
 const ray=new THREE.Raycaster();
@@ -1432,7 +1432,7 @@ function nearest(p){
 }
 
 /* ================= tools & UI ================= */
-let snowPick=null,moveB=null,drawMode=true,editRun=null,dragI=-1,drawing=null,selLand=null,pickerOpen=false,tool='look',liftType='chair',bType=null,bRot=0,treeMode='rock',liftA=null,runPts=[],hover=null,ghostAt=null,selDel=null;
+var moveB=null;let snowPick=null,drawMode=true,editRun=null,dragI=-1,drawing=null,selLand=null,pickerOpen=false,tool='look',liftType='chair',bType=null,bRot=0,treeMode='rock',liftA=null,runPts=[],hover=null,ghostAt=null,selDel=null;
 const prev=new THREE.Group();scene.add(prev);
 const markerG=new THREE.CylinderGeometry(.9,.9,3,10);markerG.translate(0,1.5,0);
 function clearPrev(){while(prev.children.length){const c=prev.children[0];prev.remove(c);c.traverse&&c.traverse(o=>{if(o.geometry&&o.geometry!==markerG&&!o.isSprite)o.geometry.dispose()})}}
@@ -1800,7 +1800,7 @@ function openMaps(title,onPick){paused=true;$('mMenu').classList.remove('show');
   $('mapCard').innerHTML=`<h2>🗺️ ${title}</h2><p>Выбери гору — от неё зависят склоны, трассы и вид.</p><div class="gfx">${Object.entries(MAPS).map(([k,m])=>`<button data-m="${k}"><b>${m.i} ${m.n}</b>${k==='alps'?'<span class="rec">для начала</span>':''}<span>${m.d}</span></button>`).join('')}</div><div class="row"><button class="btn" id="mapX">Отмена</button></div>`;
   $('mMap').classList.add('show');$('mapX').onclick=()=>{$('mMap').classList.remove('show');paused=false};
   $('mapCard').querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>onPick(b.dataset.m))}
-const newGame=(key,map,n)=>{try{localStorage.setItem(key,JSON.stringify({seed:(Math.random()*1e6)|0,map,money:startMoney(n),price:45,day:1,lifts:[],runs:[],blds:[],gift1m:true}));if(key===SAVE_KEY)localStorage.removeItem('powderpeak-v1')}catch(e){}};
+const newGame=(key,map,n)=>{try{localStorage.setItem(key,JSON.stringify({seed:(Math.random()*1e6)|0,map,money:startMoney(n),price:45,day:1,lifts:[],runs:[],blds:[],gift1m:!!META.gift}));if(key===SAVE_KEY)localStorage.removeItem('powderpeak-v1')}catch(e){}};
 let newArm=0;$('bNew').onclick=()=>openMaps('Новая гора (всё начнётся заново)',m=>{newGame(SAVE_KEY,m,RESORT);location.reload()});
 document.querySelector('#mIntro p').textContent+=' Гора: '+MAP.i+' '+MAP.n+'.';
 if(RESORT>1){document.querySelector('#mIntro h2').textContent='🏔️ Курорт №'+RESORT;document.querySelector('#mIntro p').textContent='Новая гора, новый старт! Стартовый капитал '+fmt(startMoney(RESORT))+'. Прошлые курорты видны на горизонте, вернуться можно через ⚙ → Мои курорты.'}
