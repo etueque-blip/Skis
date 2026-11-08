@@ -369,7 +369,17 @@ function rawHeight(x,z){
   return h+MAP.det*(fbm(x*.022,z*.022)-.5)*(.25+t)+2*(fbm(x*.07,z*.07,3)-.5)*t+2*fbm(x*.05,z*.05,2);
 }
 let LAKE_Y=0;
-function heightAt(x,z){
+// ---------- Big Mountain course (separate map at x≈7000) ----------
+const CX=7000,CL=640,CW=24;
+function cPathX(t){return CX+Math.sin(t/210)*75+Math.sin(t/77+1)*30+Math.sin(t/33+2)*6}
+let cYT=null;function cY(t){if(!cYT){cYT=new Float32Array(Math.ceil((CL+800)/4)+2);let y=1300;for(let k=0;k<cYT.length;k++){const tt=k*4-300;const sl=tt<0?.06:tt>CL?Math.max(.02,.25-(tt-CL)/400):.33+.12*Math.sin(tt/170)+.08*Math.sin(tt/63+2)+(Math.sin(tt/47)>.85?.16:0);cYT[k]=y;y-=sl*4}}
+  const f=(clamp(t,-300,CL+500)+300)/4,i=Math.floor(f);return cYT[i]+(cYT[i+1]-cYT[i])*(f-i)}
+function courseH(x,z){const t=z,px=cPathX(t),d=x-px,ad=Math.abs(d);let h=cY(t);
+  h+=ad>CW?Math.pow(ad-CW,1.22)*.42:0;                                       // valley walls
+  h+=(1.6*Math.sin(t*.045+d*.07)+1.1*Math.sin(t*.11-d*.05))*clamp((ad-4)/CW,0,1);// rolling snow off the groomed line
+  if(Math.sin(t/140+1)>.6)h+=.55*Math.sin(t*.32)*Math.sin(d*.45)*clamp(1-ad/CW,0,1);// mogul fields on some sections
+  return h}
+function heightAt(x,z){if(x>5000)return courseH(x,z);
   let h=rawHeight(x,z);
   // flatter village valley around the lodge
   const vd=Math.hypot((x)/1.6,z-110);if(vd<60){const f=sstep(60,25,vd);h=h+(rawHeight(0,112)+.5-h)*f*.85}
@@ -825,7 +835,7 @@ function bModel(type){
   if(type==='chalet'){g.add(box(6.5,1.1,6.5,0x8a8f99,0,.55,0),box(6,3.3,6,0x8b5a2b,0,2.75,0));
     for(let k=0;k<6;k++)g.add(box(6.05,.06,6.05,0x6b4226,0,1.35+k*.55,0));                 // log seams
     for(const x of [-1,1])for(const z of [-1,1])g.add(box(.38,3.4,.38,0x5b3a24,x*3,2.75,z*3)); // corner posts
-    {const rf=gableRoof(7.6,6.1,3.3,0x5b3a24,.9,1,0x8b5a2b);rf.rotation.y=Math.PI/2;rf.position.y=4.38;g.add(rf)}
+    {const rf=gableRoof(7.6,6.1,3.3,0x5b3a25,.9,1,0x8b5a2b);rf.rotation.y=Math.PI/2;rf.position.y=4.38;g.add(rf)}
     for(let k=0;k<4;k++)g.add(box(.18,.18,.6,0x5b3a24,-2.25+k*1.5,4.3,-3.75));                  // rafter tails
     // gable front: carved boards
     g.add(box(.9,2.6,.9,0x6b7280,1.6,6.3,1.2),box(1.1,.25,1.1,0x4b5563,1.6,7.65,1.2),box(1.3,2.1,.12,0x3f2a1a,0,1.95,-3.07));
@@ -1125,7 +1135,7 @@ const ratingHist=save&&save.ratingHist||[];const dayHist=save&&save.dayHist||[];
 function pushRating(h){ratingHist.push(clamp(h,0,100));if(ratingHist.length>80)ratingHist.shift()}
 function rating(){const base=ratingHist.length?ratingHist.reduce((a,b)=>a+b,0)/ratingHist.length/20:3;const mix=new Set(runs.map(r=>Math.min(2,r.diff))).size;return clamp(base+(mix>=3?.25:0)+Math.min(.25,buildings.filter(b=>BT[b.type].food).length*.1),0,5)}
 const _v=new THREE.Vector3();
-function meshH(x,z){const st=RS/SEG,fi=(x+RS/2)/st,fj=(z+RS/2)/st,i=Math.floor(fi),j=Math.floor(fj),h0=heightAt(x,z);if(i<0||j<0||i>=SEG||j>=SEG)return h0;
+function meshH(x,z){if(x>5000)return courseH(x,z);const st=RS/SEG,fi=(x+RS/2)/st,fj=(z+RS/2)/st,i=Math.floor(fi),j=Math.floor(fj),h0=heightAt(x,z);if(i<0||j<0||i>=SEG||j>=SEG)return h0;
   const P=tg.attributes.position,n=SEG+1,y=(a,b)=>P.getY(b*n+a),h00=y(i,j),h10=y(i+1,j),h01=y(i,j+1),h11=y(i+1,j+1),fx=fi-i,fz=fj-j;
   const A=fx+fz<1?h00+(h10-h00)*fx+(h01-h00)*fz:h11+(h01-h11)*(1-fx)+(h10-h11)*(1-fz),B=fx>fz?h00+(h10-h00)*fx+(h11-h10)*fz:h00+(h01-h00)*fz+(h11-h01)*fx;
   return Math.max(h0,A,B)}
@@ -1507,7 +1517,7 @@ function renderPicker(){
   const p=$('picker');let items=[];
   if(tool==='lift')items=Object.entries(LT).map(([k,T])=>({k,on:k===liftType,i:T.icon,n:T.n,c:'от '+fmt(Math.round(T.cost(40,15)/50)*50),d:T.desc,f:()=>{liftType=k;liftA=null;pickerOpen=false;refresh()}}));
   else if(tool==='build')items=Object.entries(BT).map(([k,T])=>{const lock=T.need&&rating()<T.need&&!buildings.some(b=>b.type===k);return{k,on:k===bType,lock,i:T.icon,n:T.n,c:lock?`🔒 рейтинг ${T.need}★`:fmt(T.cost),d:T.desc,f:()=>{if(lock)return toast(`Откроется при рейтинге ${T.need}★`,1);bType=k;ghostAt=null;pickerOpen=false;refresh()}}});
-  else if(tool==='ride')items=runs.map(R=>({k:R.id,i:DIFF[R.diff].s,n:R.name,c:best[R.name]?`🏆 ${best[R.name].toFixed(1)} с`:`${M(R.len)} м · ${DIFF[R.diff].n}`,d:'',f:()=>rideIntro(R)})).concat(lifts.map(L=>({k:'f'+L.id,i:'🏔️',n:'Фрирайд',c:best['free:'+L.name]?`🏆 ${best['free:'+L.name].toFixed(1)} с`:'с вершины',d:L.name,f:()=>rideIntro(null,{lift:L})})));
+  else if(tool==='ride')items=[{k:'course',i:'🏔',n:'Большая гора',c:best['Большая гора']?`🏆 ${best['Большая гора'].toFixed(1)} с`:'длинная трасса · отдельная гора',d:'трамплины, ворота, лес',f:()=>{pickerOpen=false;startCourse()}}].concat(runs.map(R=>({k:R.id,i:DIFF[R.diff].s,n:R.name,c:best[R.name]?`🏆 ${best[R.name].toFixed(1)} с`:`${M(R.len)} м · ${DIFF[R.diff].n}`,d:'',f:()=>rideIntro(R)})).concat(lifts.map(L=>({k:'f'+L.id,i:'🏔️',n:'Фрирайд',c:best['free:'+L.name]?`🏆 ${best['free:'+L.name].toFixed(1)} с`:'с вершины',d:L.name,f:()=>rideIntro(null,{lift:L})}))));
   else if(tool==='trees')items=[{k:'rock',on:treeMode==='rock',i:'🪨',n:'Убрать камни',c:'$40 за камень',d:'Камни мешают кататься и строить.',f:()=>{treeMode='rock';pickerOpen=false;refresh()}},{k:'cut',on:treeMode==='cut',i:'🪓',n:'Вырубить',c:'$12 за дерево',d:'Освободи место под стройку или трассу.',f:()=>{treeMode='cut';pickerOpen=false;refresh()}},{k:'plant',on:treeMode==='plant',i:'🌱',n:'Посадить',c:'$20 за дерево',d:'Лес делает курорт красивее.',f:()=>{treeMode='plant';pickerOpen=false;refresh()}}];
   p.classList.toggle('show',items.length>0&&pickerOpen);$('cPick').hidden=!(items.length>0)||pickerOpen;p.innerHTML='';
   items.forEach(x=>{const e=document.createElement('button');e.className='pk'+(x.on?' on':'')+(x.lock?' lock':'');e.innerHTML=`<span class="i">${x.i}</span><b>${x.n}</b><span class="c">${x.c}</span><span class="d">${x.d}</span>`;e.onclick=x.f;p.appendChild(e)});
@@ -1639,7 +1649,7 @@ function showInfo(o,live){
     h=h.replace(/(<\/h3>)([\s\S]*)$/,'$1<div id="iStats">$2</div>');
     if(lv<MAXL){const c=bUpCost(o);h+=`<div class="cb"><button class="btn pri" id="iBUp" ${money>=c?'':'disabled'}>⬆ ${LN[lv]} · ${fmt(c)}</button></div><div class="r" style="display:block;line-height:1.35"><span>${T.guests?`Мест: ${Math.round(T.guests*bMul(o))} → ${Math.round(T.guests*BLM[lv])} · доход ×${bMul(o)} → ×${BLM[lv]}${lv===MAXL-1?' · бассейн и вертолёт для VIP':''}`:T.food?`Доход ×${bMul(o)} → ×${BLM[lv]}, гости довольнее`:`Доход ×${bMul(o)} → ×${BLM[lv]}`}${(()=>{const per=o.dayInc||0;if(per<=0)return'';const gain=per*(BLM[lv]/bMul(o)-1);return gain>0?`<br>≈ +${fmt(Math.round(gain))} в день · окупится за ~${Math.max(1,Math.ceil(c/gain))} дн.`:''})()}</span></div>`}else h+=`<div class="r"><span style="color:#fde047">✦ Максимальный уровень</span></div>`;
   }
-  h+=`<div class="cb">${o.kind==='bld'?'<button class="btn" id="iMove">↔ Переместить</button>':''}${o.kind==='bld'&&BT[o.type].food?`<button class="btn" id="iBCol">🎨 Цвет <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#${(o.col||bColDef(o.type)).toString(16).padStart(6,'0')};vertical-align:-1px"></span></button>`:''}<button class="btn red" id="iDel">🧨 Снести</button></div>`;
+  h+=`<div class="cb">${o.kind==='bld'?'<button class="btn" id="iMove">↔ Переместить</button>':''}${o.kind==='bld'&&bColDef(o.type)?`<button class="btn" id="iBCol">🎨 Цвет <span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:#${(o.col||bColDef(o.type)).toString(16).padStart(6,'0')};vertical-align:-1px"></span></button>`:''}<button class="btn red" id="iDel">🧨 Снести</button></div>`;
   el.innerHTML=h;$('iX').onclick=hideInfo;$('iDel').onclick=()=>{setTool('del');selDel=o;refresh()};if($('iMove'))$('iMove').onclick=()=>startMove(o);if($('iBCol'))$('iBCol').onclick=()=>recolorBuilding(o);
   if($('iUp'))$('iUp').onclick=()=>upgradeLift(o);if($('iCol'))$('iCol').onclick=()=>recolorLift(o);if($('iBUp'))$('iBUp').onclick=()=>upgradeBuilding(o);if($('iTurbo'))$('iTurbo').onclick=()=>turboLift(o);if($('iSummit'))$('iSummit').onclick=()=>buildSummit(o);if($('iWideL'))$('iWideL').onclick=()=>widenLift(o);if($('iFix'))$('iFix').onclick=()=>repairLift(o);if($('iEdit'))$('iEdit').onclick=()=>startEditRun(o);if($('iWide'))$('iWide').onclick=()=>widenRun(o);if($('iRide'))$('iRide').onclick=()=>rideIntro(o);if($('iLamp'))$('iLamp').onclick=()=>buyRunUpgrade(o,'lit');if($('iSnow'))$('iSnow').onclick=()=>buyRunUpgrade(o,'snow');
 }
@@ -1710,7 +1720,7 @@ function buildSummit(L){const c=summitCost();if(money<c)return toast('Не хв�
   burst(new THREE.Vector3(B.x,B.y+10,B.z),'🏔 -'+fmt(c));toast('🏔 На вершине открылся ресторан с площадкой — гости заходят прямо с подъёмника');showSpot({x:B.x,z:B.z});persist();checkQuest()}
 function clearComplaints(keys){day.tlog=day.tlog||{};keys.forEach(k=>{day.tlog[k]=[]});if(keys.includes('stuck')){day.stuckAt={};day.stuckRun={}}if(keys.includes('queue'))day.qLift={};if(keys.includes('steep'))day.steepRun={};lastProbH='';renderProbs&&renderProbs()}
 var BCOLS=[0x9f1239,0x1e3a8a,0x166534,0x7c2d12,0x334155,0xb45309,0x6d28d9,0x0f766e,0xdb2777];
-function bColDef(t){return t==='cafe'?0x1e3a8a:0x9f1239}
+function bColDef(t){return {cafe:0x1e3a8a,restaurant:0x9f1239,chalet:0x5b3a25,hotel:0x2f3a4a,rental:0x0ea5e9,workshop:0x6b7280,patrol:0xdc2626,cannon:0xfacc15}[t]||0}
 function setBColor(B,c){const cur=B.col||bColDef(B.type);if(cur===c)return;const m=B.g.children[0];m.traverse(o=>{if(o.isMesh&&o.material&&o.material.color&&!o.material.map&&o.material.color.getHex()===cur)o.material=mat(c)});
   if(B.deco)B.deco.traverse(o=>{if(o.isMesh&&o.material&&o.material.color&&o.material.color.getHex()===cur)o.material=mat(c)});B.col=c}
 function recolorBuilding(B){const cur=B.col||bColDef(B.type),i=BCOLS.indexOf(cur);setBColor(B,BCOLS[(i+1)%BCOLS.length]);showInfo(B);persist()}
@@ -2114,8 +2124,8 @@ function makeGates(R){const g=new THREE.Group(),list=[];const n=R.sm.length;let 
     for(const s2 of [-1,1]){const x=cx+lx*w*s2,z=cz+lz*w*s2;const p=new THREE.Mesh(gatePoleG,fm);p.position.set(x,heightAt(x,z),z);p.castShadow=true;g.add(p)}
     const fl=new THREE.Mesh(new THREE.PlaneGeometry(w*2,.4),fm);fl.position.set(cx,heightAt(cx,cz)+1.5,cz);fl.rotation.y=Math.atan2(tx,tz);g.add(fl);
     list.push({i,x:cx,z:cz,lx,lz,w,ok:null,fm});side=-side}
-  const kick=[];for(let i=26;i<n-14;i+=30){const a=R.sm[i-2],b=R.sm[i+2];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const off=((i/30)|0)%2?-4:4,lx=-tz,lz=tx;
-    const gr=(R.sm[i-2].y-R.sm[i+2].y)/(Math.hypot(R.sm[i+2].x-R.sm[i-2].x,R.sm[i+2].z-R.sm[i-2].z)||1);if(gr>.32||gr<.03)continue;
+  const kick=[];for(let i=26;i<n-14;i+=R.course?24:30){const a=R.sm[i-2],b=R.sm[i+2];let tx=b.x-a.x,tz=b.z-a.z;const l=Math.hypot(tx,tz)||1;tx/=l;tz/=l;const off=((i/30)|0)%2?-4:4,lx=-tz,lz=tx;
+    const gr=(R.sm[i-2].y-R.sm[i+2].y)/(Math.hypot(R.sm[i+2].x-R.sm[i-2].x,R.sm[i+2].z-R.sm[i-2].z)||1);if(gr>(R.course?.7:.32)||gr<.03)continue;
     const cx=R.sm[i].x+lx*off*.4,cz=R.sm[i].z+lz*off*.4,cy=meshH(cx,cz);
     const sh=new THREE.Shape();sh.moveTo(-3,0);sh.lineTo(2.2,0);sh.lineTo(2.2,1.6);sh.quadraticCurveTo(-.5,.9,-3,0);const kg=new THREE.ExtrudeGeometry(sh,{depth:4.4,bevelEnabled:false});kg.translate(0,0,-2.2);kg.rotateY(-Math.PI/2);kg.scale(KS,KS,KS);kg.translate(0,.45,0);
     const km=new THREE.Mesh(kg,new THREE.MeshLambertMaterial({color:0xf8fbff}));km.position.set(cx,cy-.1,cz);km.rotation.y=Math.atan2(tx,tz);km.castShadow=true;km.receiveShadow=true;g.add(km);
@@ -2176,6 +2186,31 @@ function profilePath(ys,W,Hh,pad){const mn=Math.min(...ys),mx=Math.max(...ys),rg
   const pt=i=>[(i/(n-1))*W,pad+(1-(ys[i]-mn)/rg)*(Hh-pad*2)];let l='';for(let i=0;i<n;i++){const [x,y]=pt(i);l+=(i?'L':'M')+x.toFixed(1)+' '+y.toFixed(1)}
   return{line:l,area:l+`L${W} ${Hh}L0 ${Hh}Z`,pt}}
 function freeProfile(L){const ys=[];const a={x:L.b.x+L.dir.x*6,z:L.b.z+L.dir.z*6};for(let k=0;k<=40;k++){const t=k/40,x=a.x+(BASE.x-a.x)*t,z=a.z+(BASE.z-a.z)*t;ys.push(heightAt(x,z))}return ys}
+let COURSE=null;
+function buildCourse(){if(COURSE)return COURSE;const g=new THREE.Group();
+  // terrain strip around the line
+  const T0=-260,T1=CL+420,ST=8,NX=51,HW=300,NZ=Math.ceil((T1-T0)/ST)+1,pos=new Float32Array(NX*NZ*3),col=new Float32Array(NX*NZ*3),idx=[];
+  for(let j=0;j<NZ;j++){const t=T0+j*ST,px=cPathX(t);for(let i=0;i<NX;i++){const d=-HW+i*(2*HW/(NX-1)),x=px+d,y=courseH(x,t),k=(j*NX+i)*3;pos[k]=x;pos[k+1]=y;pos[k+2]=t;
+    const ad=Math.abs(d),pist=ad<CW?1:0,rock=clamp((ad-150)/120,0,1)*(.5+.5*Math.sin(t*.02+d*.03)),v=.5+.5*Math.sin(x*.7+t*.3);
+    let r=.92+.05*v,gg=.94+.05*v,b=1;if(pist){r=.96;gg=.98;b=1}r+=(.52-r)*rock*.6;gg+=(.55-gg)*rock*.6;b+=(.62-b)*rock*.6;col[k]=r;col[k+1]=gg;col[k+2]=b}}
+  for(let j=0;j<NZ-1;j++)for(let i=0;i<NX-1;i++){const a=j*NX+i,b2=a+1,c=a+NX,d2_=c+1;idx.push(a,c,b2,b2,c,d2_)}
+  const tg2=new THREE.BufferGeometry();tg2.setAttribute('position',new THREE.BufferAttribute(pos,3));tg2.setAttribute('color',new THREE.BufferAttribute(col,3));tg2.setIndex(idx);tg2.computeVertexNormals();
+  const tm=new THREE.Mesh(tg2,new THREE.MeshLambertMaterial({vertexColors:true}));tm.receiveShadow=true;g.add(tm);
+  // forest along both sides, thicker further out
+  const tp=[];for(let k=0;k<3200;k++){const t=T0+hash(k,401)*(T1-T0),sd=hash(k,402)<.5?-1:1,d=sd*(CW+7+Math.pow(hash(k,403),1.4)*250);if(Math.abs(d)<CW+7)continue;const x=cPathX(t)+d;tp.push([x,courseH(x,t),t,1+hash(k,404)*1.4])}
+  const tim=new THREE.InstancedMesh(treeGeo,new THREE.MeshLambertMaterial({color:0x1d5434}),tp.length);tp.forEach(([x,y,z,sc],k)=>{_m.makeScale(sc,sc*1.2,sc).setPosition(x,y-.4,z);tim.setMatrixAt(k,_m)});tim.castShadow=true;g.add(tim);
+  // big peaks on the horizon
+  for(let k=0;k<8;k++){const t=-200+k*130,sd=k%2?1:-1,h=380+hash(k,405)*260,cg=new THREE.ConeGeometry(260+hash(k,406)*120,h,9,1);const cm=new THREE.Mesh(cg,new THREE.MeshLambertMaterial({color:0xe6edf6}));cm.position.set(cPathX(t)+sd*(520+hash(k,407)*200),cY(t)+h/2-60,t);g.add(cm)}
+  // start hut, finish arch
+  {const t=4,px=cPathX(t),y=courseH(px,t);g.add(box(8,4,6,0x7c4a26,px-CW-6,y+2,t),box(9,.4,7,0xf8fafc,px-CW-6,y+4.2,t));const sl=label('🏔 СТАРТ · Большая гора','#fde68a',.12);sl.position.set(px,y+10,t);g.add(sl)}
+  {const t=CL-6,px=cPathX(t),y=courseH(px,t);for(const sd of [-1,1])g.add(box(.8,7,.8,0xdc2626,px+sd*(CW-2),y+3.5,t));g.add(box(2*CW-2,1.4,.5,0xdc2626,px,y+7,t));const fl=label('🏁 ФИНИШ','#ffffff',.12);fl.position.set(px,y+9.5,t);g.add(fl)}
+  scene.add(g);
+  // the run itself: smart line along the valley with gates & kickers
+  const pts=[];for(let t=0;t<=CL;t+=110)pts.push(new THREE.Vector3(cPathX(t),0,t));pts.forEach(p=>p.y=heightAt(p.x,p.z));
+  const Rn=makeRun(pts,'Большая гора',8.5);Rn.course=1;runs.splice(runs.indexOf(Rn),1);refreshRunDeco&&0;
+  COURSE={g,R:Rn};return COURSE}
+function startCourse(){const C=buildCourse();C.g.visible=true;C.R.g.visible=true;if(!scene.children.includes(C.R.g))scene.add(C.R.g);startRide(C.R);rideMsg('🏔 Большая гора — длинная трасса с трамплинами и воротами. Поехали!',2600)}
+function leaveCourse(){if(!COURSE)return;COURSE.g.visible=false;COURSE.R.g.visible=false;controls.target.set(BASE.x,BASE.y+10,BASE.z-60);camera.position.set(BASE.x-60,BASE.y+120,BASE.z+120)}
 function rideIntro(R,opt){opt=opt||{};if(!R&&!opt.lift)return;setTool('look');hideInfo();$('mRide').classList.remove('show');paused=true;
   const ys=R?R.sm.filter((_,i)=>i%2===0).map(p=>p.y):freeProfile(opt.lift);
   const len=R?R.len:Math.hypot(opt.lift.b.x-BASE.x,opt.lift.b.z-BASE.z),drop=R?R.vert:opt.lift.b.y-BASE.y,diff=R?R.diff:2;
@@ -2218,7 +2253,7 @@ function startRide(R,opt){opt=opt||{};$('mRide').classList.remove('show');if(!R&
    const mn=Math.min(...ys),mx=Math.max(...ys);ride.prof.mn=mn;ride.prof.mx=mx}
   thumb.on=false;thumb.v=0;$('rKnob').style.transform='';$('rThumb').querySelector('span').style.opacity=1;
   camera.position.set(ride.p.x-Math.sin(f0)*10,ride.p.y+5,ride.p.z-Math.cos(f0)*10);camLook.copy(ride.p)}
-function endRide(silent){if(!ride)return;const r=ride;ride=null;lifts.forEach(L=>(L.towers||[]).forEach(t=>{t.visible=true;t.userData.tw.visible=true}));blob.visible=false;avG.visible=false;wideOff();finePatch.visible=false;camera.near=.5;camera.updateProjectionMatrix();piles.count=0;pileI=0;if(r.gates)scene.remove(r.gates.g);rider.visible=false;ghost.visible=false;controls.enabled=true;document.body.classList.remove('riding');$('ride').hidden=true;
+function endRide(silent){if(!ride)return;const r=ride;ride=null;if(COURSE&&r.R===COURSE.R)setTimeout(()=>{if(!ride||ride.R!==COURSE.R)leaveCourse()},0);lifts.forEach(L=>(L.towers||[]).forEach(t=>{t.visible=true;t.userData.tw.visible=true}));blob.visible=false;avG.visible=false;wideOff();finePatch.visible=false;camera.near=.5;camera.updateProjectionMatrix();piles.count=0;pileI=0;if(r.gates)scene.remove(r.gates.g);rider.visible=false;ghost.visible=false;controls.enabled=true;document.body.classList.remove('riding');$('ride').hidden=true;
   for(const k in keys)keys[k]=false;document.querySelectorAll('.rb').forEach(b=>b.classList.remove('on'));audioUpd(0,0);slMat.opacity=0;trG.setDrawRange(0,0);
   const U=rider.userData;U.torso.visible=true;U.legs.forEach(l=>l.visible=true);
   if(silent)return;const e=r.R?r.R.sm[r.R.sm.length-1]:BASE;controls.target.set(e.x,e.y,e.z);camera.position.set(e.x-50,e.y+55,e.z+80);camera.fov=innerWidth<innerHeight?68:50;camera.updateProjectionMatrix()}
@@ -2244,7 +2279,7 @@ function finishRide(){const r=ride;r.done=true;const total=r.t+r.pen,key=r.key,p
   $('mRide').classList.add('show');const again=()=>{const o=r.R?[r.R]:[null,{lift:r.lift}];endRide(true);startRide(...o)};
   $('rAgain').onclick=again;if($('rNext'))$('rNext').onclick=()=>{const N=r._next;$('mRide').classList.remove('show');endRide(true);rideIntro(N.run)};$('rOther').onclick=()=>{$('mRide').classList.remove('show');endRide();setTool('ride')};$('rOut').onclick=()=>{$('mRide').classList.remove('show');endRide()}}
 const _cam=new THREE.Vector3(),_look=new THREE.Vector3(),_hp=new THREE.Vector3();let camLook=new THREE.Vector3();
-function safeSpot(x,z){return !hitTree(x,z)&&!hitHouse(x,z)&&inBounds({x,z})}
+function safeSpot(x,z){return !hitTree(x,z)&&!hitHouse(x,z)&&(x>5000||inBounds({x,z}))}
 function unstick(r,msg){const p=r.p;let q,q2;r.unstuck=(r.unstuck||0)+1;
   if(r.R){const sm=r.R.sm;let i=Math.min(sm.length-2,r.idx+3);while(i<sm.length-2&&!safeSpot(sm[i].x,sm[i].z))i++;q=sm[i];q2=sm[Math.min(sm.length-1,i+5)];r.idx=Math.max(r.idx,i)}
   else{const dx=BASE.x-p.x,dz=BASE.z-p.z,l=Math.hypot(dx,dz)||1;let k=3;q={x:p.x+dx/l*k,z:p.z+dz/l*k};while(k<30&&!safeSpot(q.x,q.z)){k+=2;q={x:p.x+dx/l*k,z:p.z+dz/l*k}}q2={x:q.x+dx/l*5,z:q.z+dz/l*5}}
@@ -2270,7 +2305,7 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
     else{r.vx*=1-.04*dt;r.vz*=1-.04*dt}
     sp=Math.hypot(r.vx,r.vz);if(sp>38){r.vx*=38/sp;r.vz*=38/sp;sp=38}r.top=Math.max(r.top,sp);
     const nx=p.x+r.vx*dt*RSC,nz=p.z+r.vz*dt*RSC;
-    if(!inBounds({x:nx,z:nz})){r.vx*=-.3;r.vz*=-.3;r.f+=Math.PI*.6;if(r.warnT<=0){rideMsg('🚧 Граница твоей земли');r.warnT=2}}
+    if(nx<5000&&!inBounds({x:nx,z:nz})){r.vx*=-.3;r.vz*=-.3;r.f+=Math.PI*.6;if(r.warnT<=0){rideMsg('🚧 Граница твоей земли');r.warnT=2}}
     else if(!r.air&&!(hitTree(p.x,p.z)||hitHouse(p.x,p.z))&&(hitTree(nx,nz)||hitHouse(nx,nz))){if(sp>7)crash(r);else{
       // slow: try to glance off to the side instead of stopping dead
       let moved=false;for(const a of [.5,-.5,1,-1,1.5,-1.5]){const c=Math.cos(a),sn=Math.sin(a),vx=r.vx*c+r.vz*sn,vz=-r.vx*sn+r.vz*c,tx=p.x+vx*dt*RSC,tz=p.z+vz*dt*RSC;if(!hitTree(tx,tz)&&!hitHouse(tx,tz)){r.vx=vx*.85;r.vz=vz*.85;p.x=tx;p.z=tz;moved=true;break}}
