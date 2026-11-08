@@ -1,7 +1,7 @@
 // Offline cache for Powder Peak Tycoon.
 // Network first, so players always get the newest version when online;
 // falls back to the cached copy when there is no connection.
-const CACHE = 'powder-peak-v4';
+const CACHE = 'powder-peak-v5';
 const FILES = [
   './',
   'index.html',
@@ -32,7 +32,7 @@ self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   const sameOrigin = new URL(e.request.url).origin === location.origin;
   e.respondWith(
-    fetch(e.request)
+    fetch(e.request, { cache: 'no-cache' })
       .then(res => {
         if (res.ok && sameOrigin) {
           const copy = res.clone();
