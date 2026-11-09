@@ -2074,6 +2074,10 @@ function smokeTexAv(){if(!window._avT){const cv=document.createElement('canvas')
 let ride=null;const keys={};let camMode=0,muted=false,gear='ski';try{gear=localStorage.getItem('powderpeak-gear')||'ski'}catch(e){}
 try{muted=localStorage.getItem('powderpeak-mute')==='1';camMode=+(localStorage.getItem('powderpeak-cam')||0)||0}catch(e){}
 const CAM_N=['камера сзади','камера издалека','от первого лица'];
+const fpG=new THREE.Group();{const sk=mat(0x2563eb),tip=mat(0xf8fafc),mit=mat(0x111827),pl=mat(0x94a3b8);
+  for(const sd of [-1,1]){const s1=new THREE.Mesh(new THREE.BoxGeometry(.09,.04,1.6),sk);s1.position.set(sd*.13,0,0);const t1=new THREE.Mesh(new THREE.BoxGeometry(.09,.04,.3),tip);t1.position.set(sd*.13,.05,-.88);t1.rotation.x=.45;const sg=new THREE.Group();sg.add(s1,t1);sg.userData.ski=sd;fpG.add(sg);
+    const h=new THREE.Group();h.add(new THREE.Mesh(new THREE.SphereGeometry(.06,10,8),mit));const p=new THREE.Mesh(new THREE.CylinderGeometry(.015,.015,1.5,6),pl);p.position.set(0,-.72,-.12);p.rotation.x=.25;h.add(p);h.userData.hand=sd;fpG.add(h)}
+  fpG.traverse(o=>{if(o.isMesh){o.material=o.material.clone();o.material.depthTest=false;o.material.transparent=true;o.material.opacity=1;o.renderOrder=999}});fpG.visible=false;camera.add(fpG);scene.add(camera)}
 let ghosts={};try{ghosts=JSON.parse(localStorage.getItem(SAVE_KEY+'-ghost')||'{}')||{}}catch(e){}
 // articulated skier
 function makeRider(color){const g=new THREE.Group();g.rotation.order='YXZ';const M=c=>color!==undefined?color:mat(c);
@@ -2303,7 +2307,7 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
       r.boosting=keys.boost&&r.boost>0;if(r.boosting){vf+=15*dt;r.boost=Math.max(0,r.boost-.42*dt);if(Math.random()<.5)emitSpray(p,-r.vx*.3,1+Math.random(),-r.vz*.3)}else r.boost=Math.min(1,r.boost+.03*dt);
       r.vx=fx*vf+lx*vl;r.vz=fz*vf+lz*vl}
     else{r.vx*=1-.04*dt;r.vz*=1-.04*dt}
-    sp=Math.hypot(r.vx,r.vz);{const cap=r.R&&r.R.course?(r.boosting?24:20):38;if(sp>cap){const k=Math.max(cap/sp,1-2.5*dt);r.vx*=k;r.vz*=k;sp*=k}}r.top=Math.max(r.top,sp);
+    sp=Math.hypot(r.vx,r.vz);{const cap=r.R&&r.R.course?(r.boosting?38:tuck?30:24):38;if(sp>cap){const k=Math.max(cap/sp,1-2.5*dt);r.vx*=k;r.vz*=k;sp*=k}}r.top=Math.max(r.top,sp);
     if(r.R&&r.R.course&&!r.air){const off=p.x-cPathX(p.z),lim=CW-3;if(Math.abs(off)>lim){const push=(Math.abs(off)-lim)*4*dt*Math.sign(off);r.vx-=push*6;p.x-=push*.6;if(r.warnT<=0&&Math.abs(off)>lim+2){rideMsg('↩ Держись трассы');r.warnT=2.5}}}
     const nx=p.x+r.vx*dt*RSC,nz=p.z+r.vz*dt*RSC;
     if(nx<5000&&!inBounds({x:nx,z:nz})){r.vx*=-.3;r.vz*=-.3;r.f+=Math.PI*.6;if(r.warnT<=0){rideMsg('🚧 Граница твоей земли');r.warnT=2}}
@@ -2377,6 +2381,7 @@ function updRide(dt0){const r=ride;if(!r||r.done)return;dt0=Math.min(dt0,.033);
   const U=rider.userData,fp=camMode===2&&!(r.crashT>0);U.torso.visible=!fp;U.legs.forEach(l=>l.visible=!fp);
   const tyaw=sp>2.5?Math.atan2(r.vx,r.vz):r.f;let dy=tyaw-r.camYaw;while(dy>Math.PI)dy-=2*Math.PI;while(dy<-Math.PI)dy+=2*Math.PI;r.camYaw+=dy*Math.min(1,dt0*(fp?12:4));
   const cdx=Math.sin(fp?r.f:r.camYaw),cdz=Math.cos(fp?r.f:r.camYaw);
+  fpG.visible=fp;if(fp){const t=performance.now()/1000,bob=sp>2?Math.sin(t*9)*.012*clamp(sp/15,0,1):0;fpG.children.forEach(o=>{if(o.userData.ski){o.position.set(0,-.66+crouch*.08+bob,-2.1);o.rotation.set(-.02,o.userData.ski*r.st*.18,0)}else if(o.userData.hand){const sd=o.userData.hand;o.position.set(sd*(.62-crouch*.06),-.46+crouch*.06+bob*1.5,-1.15+crouch*.1);o.rotation.set(tuck?.6:.1,0,0)}});fpG.rotation.z=r.lean*.25}
   if(fp){_hp.set(p.x+Math.sin(r.f)*.35,Math.max(p.y,meshH(p.x,p.z))+.47+(2.6-crouch*.45)*1.25,p.z+Math.cos(r.f)*.35);camera.position.copy(_hp);_look.set(p.x+cdx*12*RSC*2,p.y+.47+.3,p.z+cdz*12*RSC*2);camLook.copy(_look)}
   else{const cr=r.crashT>0,spd=clamp(sp/30,0,1),back=camMode===1?15:cr?11:6.2-spd*1.4,up=camMode===1?6.5:cr?5:2.6-spd*.9;_cam.set(p.x-cdx*back,0,p.z-cdz*back);_cam.y=Math.max(p.y+.47+up,meshH(_cam.x,_cam.z)+1.6);
     camera.position.lerp(_cam,1-Math.exp(-dt0*7));_look.set(p.x+cdx*10,p.y+.47+1.4,p.z+cdz*10);camLook.lerp(_look,1-Math.exp(-dt0*12))}
